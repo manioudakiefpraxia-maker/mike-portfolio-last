@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" role="img" aria-labelledby="title desc">
+  <title id="title">ON AIR host lower third</title>
+  <desc id="desc">A clean violet broadcast frame introducing host Maya Lee.</desc>
+  <rect width="1600" height="900" fill="#4930bd"/>
+  <path d="M0 0h570L390 900H0z" fill="#f777bb"/>
+  <path d="M1170 0h430v900H990z" fill="#6550ce" opacity=".55"/>
+  <rect x="92" y="72" width="270" height="86" rx="43" fill="#ffe847"/>
+  <text x="227" y="130" text-anchor="middle" fill="#272065" font-family="Arial,Helvetica,sans-serif" font-size="36" font-weight="900" letter-spacing="-2">ON AIR</text>
+  <g transform="translate(520 545)">
+    <rect width="770" height="176" rx="18" fill="#ffe847"/>
+    <rect x="770" width="116" height="176" rx="18" fill="#f777bb"/>
+    <text x="56" y="80" fill="#272065" font-family="Arial,Helvetica,sans-serif" font-size="66" font-weight="900" letter-spacing="-3">MAYA LEE</text>
+    <text x="58" y="126" fill="#4930bd" font-family="Arial,Helvetica,sans-serif" font-size="22" font-weight="700" letter-spacing="5">HOST · CULTURE CLUB</text>
+    <circle cx="828" cy="88" r="18" fill="#272065"/>
+  </g>
+  <text x="1440" y="820" text-anchor="end" fill="#fff" font-family="Arial,Helvetica,sans-serif" font-size="20" font-weight="700" letter-spacing="5">LIVE / 20:00</text>
+</svg>

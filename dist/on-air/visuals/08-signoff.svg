@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" role="img" aria-labelledby="title desc">
+  <title id="title">ON AIR channel sign-off</title>
+  <desc id="desc">A clean closing frame reading See you next time.</desc>
+  <rect width="1600" height="900" fill="#4930bd"/>
+  <rect x="72" y="68" width="1456" height="764" rx="54" fill="#f777bb"/>
+  <rect x="136" y="132" width="1328" height="636" rx="38" fill="#ffe847"/>
+  <path d="M136 132h260L258 768H136z" fill="#fff17d"/>
+  <text x="210" y="232" fill="#272065" font-family="Arial,Helvetica,sans-serif" font-size="42" font-weight="900" letter-spacing="-2">ON AIR</text>
+  <text x="800" y="430" text-anchor="middle" fill="#272065" font-family="Arial,Helvetica,sans-serif" font-size="118" font-weight="900" letter-spacing="-7">SEE YOU</text>
+  <text x="800" y="548" text-anchor="middle" fill="#272065" font-family="Arial,Helvetica,sans-serif" font-size="118" font-weight="900" letter-spacing="-7">NEXT TIME.</text>
+  <text x="1380" y="704" text-anchor="end" fill="#4930bd" font-family="Arial,Helvetica,sans-serif" font-size="20" font-weight="700" letter-spacing="5">STAY CURIOUS</text>
+</svg>

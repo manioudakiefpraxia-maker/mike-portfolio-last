@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" role="img" aria-labelledby="title desc">
+  <title id="title">ON AIR programme schedule</title>
+  <desc id="desc">A clean now and next card in the channel colour system.</desc>
+  <rect width="1600" height="900" fill="#ffe847"/>
+  <rect x="0" y="0" width="450" height="900" fill="#f777bb"/>
+  <text x="84" y="126" fill="#272065" font-family="Arial,Helvetica,sans-serif" font-size="54" font-weight="900" letter-spacing="-3">ON AIR</text>
+  <text x="84" y="784" fill="#272065" font-family="Arial,Helvetica,sans-serif" font-size="22" font-weight="700" letter-spacing="5">TONIGHT / 20:00—22:00</text>
+  <g transform="translate(540 150)" fill="#272065" font-family="Arial,Helvetica,sans-serif">
+    <text y="0" font-size="22" font-weight="700" letter-spacing="6">NOW</text>
+    <text y="108" font-size="86" font-weight="900" letter-spacing="-5">CULTURE CLUB</text>
+    <text y="158" font-size="25" font-weight="700" letter-spacing="3">20:00 · NEW VOICES / NEW IDEAS</text>
+    <line x1="0" y1="238" x2="925" y2="238" stroke="#272065" stroke-width="4"/>
+    <text y="326" font-size="22" font-weight="700" letter-spacing="6">NEXT</text>
+    <text y="434" font-size="73" font-weight="900" letter-spacing="-4">OPEN CONVERSATION</text>
+    <text y="484" font-size="25" font-weight="700" letter-spacing="3">21:00 · LIVE INTERVIEW</text>
+  </g>
+  <circle cx="1478" cy="96" r="22" fill="#4930bd"/>
+</svg>
