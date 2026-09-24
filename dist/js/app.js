@@ -27,7 +27,8 @@ if(disciplinesSection){
   const counter=disciplinesSection.querySelector('.disciplines-counter');
   const focus=disciplinesSection.querySelector('.disciplines-focus');
   const focusCopy=disciplinesSection.querySelector('.disciplines-focus-copy');
-  const disciplinesLinks=disciplinesSection.querySelectorAll('.disciplines-link');
+  const backgrounds=[...disciplinesSection.querySelectorAll('.disciplines-bg-image')];
+
   const REST_OFFSET=-20;
   const names=['GRAPHIC','MOTION','WEB','AI'];
   const descriptions=[
@@ -37,158 +38,129 @@ if(disciplinesSection){
     'Creative AI · Experiments · Visual systems'
   ];
 
-  let rotation=0;
-  let startRotation=0;
-  let pointerStartX=0;
-  let pointerStartY=0;
-  let isDragging=false;
-  let didDrag=false;
-  let introPlayed=false;
-  let interactionEnabled=false;
+  let currentRotation=REST_OFFSET;
+  let targetRotation=REST_OFFSET;
+  let currentRotateY=0;
+  let targetRotateY=0;
+  let currentRotateZ=0;
+  let targetRotateZ=0;
+  let currentTranslateY=0;
+  let targetTranslateY=0;
+  let sectionStart=0;
+  let sectionRange=1;
   let currentIndex=-1;
-  let metaTimer;
+  let metaTimer=0;
+  let rafId=0;
 
-  function getFaceIndex(value){
-    const steps=Math.round(-(value-REST_OFFSET)/90);
-    return ((steps%4)+4)%4;
+  const clamp=(value,min,max)=>Math.min(Math.max(value,min),max);
+
+  function getFaceIndex(rotation){
+    const steps=Math.round(-(rotation-REST_OFFSET)/90);
+    return clamp(steps,0,3);
   }
 
-  function updateMeta(value,force=false){
-    const index=getFaceIndex(value);
+  function setBackground(index){
+    backgrounds.forEach((background,i)=>{
+      background.classList.toggle('is-active',i===index);
+    });
+  }
+
+  function updateMeta(rotation,force=false){
+    const index=getFaceIndex(rotation);
     if(!force&&index===currentIndex)return;
     currentIndex=index;
+    setBackground(index);
     clearTimeout(metaTimer);
     giantWord.classList.add('is-changing');
     focus.classList.add('is-changing');
-    metaTimer=setTimeout(()=>{
+    metaTimer=window.setTimeout(()=>{
       giantWord.textContent=names[index];
       counter.textContent=`${String(index+1).padStart(2,'0')} / 04`;
       focusCopy.textContent=descriptions[index];
       giantWord.classList.remove('is-changing');
       focus.classList.remove('is-changing');
-    },145);
+    },120);
   }
 
-  function setCubeRotation(value,smooth=false){
-    rotation=value;
-    cube.style.transition=smooth?'transform .72s cubic-bezier(.16,1,.3,1)':'none';
-    cube.style.transform=`rotateX(${rotation}deg)`;
-    updateMeta(rotation);
+  function measureSection(){
+    const rect=disciplinesSection.getBoundingClientRect();
+    sectionStart=window.scrollY+rect.top;
+    sectionRange=Math.max(disciplinesSection.offsetHeight,window.innerHeight,1);
   }
 
-  function getNearestRest(value){
-    const step=Math.round((value-REST_OFFSET)/90);
-    return step*90+REST_OFFSET;
-  }
-
-  function snapCube(){
-    setCubeRotation(getNearestRest(rotation),true);
-  }
-
-  function moveOneFace(direction){
-    if(!interactionEnabled)return;
-    setCubeRotation(getNearestRest(rotation)+direction*90,true);
-  }
-
-  function runIntro(){
-    if(introPlayed)return;
-    introPlayed=true;
-    cubeScene.classList.add('is-visible');
+  function updateScrollTarget(){
     if(preferences.reduceMotion.matches){
-      rotation=REST_OFFSET;
-      cube.style.transform=`rotateX(${REST_OFFSET}deg)`;
-      interactionEnabled=true;
-      updateMeta(rotation);
-      giantWord.classList.add('is-visible');
+      targetRotation=REST_OFFSET;
+      targetRotateY=0;
+      targetRotateZ=0;
+      targetTranslateY=0;
       return;
     }
-    cube.classList.add('is-intro-spinning');
-    window.setTimeout(()=>{
-      giantWord.classList.add('is-visible');
-    },1900);
-    cube.addEventListener('animationend',()=>{
-      cube.classList.remove('is-intro-spinning');
-      cube.style.animation='none';
-      rotation=REST_OFFSET;
-      cube.style.transition='none';
-      cube.style.transform=`rotateX(${REST_OFFSET}deg)`;
-      interactionEnabled=true;
-      updateMeta(rotation);
-    },{once:true});
+
+    const progress=clamp((window.scrollY-sectionStart)/sectionRange,0,1);
+    const travelRatio=window.innerWidth<=768?.18:.25;
+
+    targetRotation=REST_OFFSET-(progress*270);
+    targetRotateY=(progress-.5)*8;
+    targetRotateZ=(progress-.5)*1.5;
+    targetTranslateY=(.05-progress*travelRatio)*window.innerHeight;
   }
 
-  const introObserver=new IntersectionObserver((entries)=>{
-    entries.forEach((entry)=>{
-      if(entry.isIntersecting){
-        runIntro();
-        introObserver.disconnect();
-      }
-    });
-  },{threshold:0,rootMargin:'-38% 0px -38% 0px'});
-  introObserver.observe(cubeScene);
+  function renderCube(){
+    const easing=.095;
 
-  cubeScene.addEventListener('pointerdown',(event)=>{
-    if(!interactionEnabled)return;
-    isDragging=true;
-    didDrag=false;
-    pointerStartX=event.clientX;
-    pointerStartY=event.clientY;
-    startRotation=rotation;
-    cubeScene.classList.add('is-dragging');
-    cube.style.transition='none';
-  });
+    currentRotation+=(targetRotation-currentRotation)*easing;
+    currentRotateY+=(targetRotateY-currentRotateY)*easing;
+    currentRotateZ+=(targetRotateZ-currentRotateZ)*easing;
+    currentTranslateY+=(targetTranslateY-currentTranslateY)*easing;
 
-  cubeScene.addEventListener('pointermove',(event)=>{
-    if(!isDragging)return;
-    const deltaX=event.clientX-pointerStartX;
-    const deltaY=event.clientY-pointerStartY;
-    if(Math.abs(deltaX)>6||Math.abs(deltaY)>6){
-      didDrag=true;
-      if(!cubeScene.hasPointerCapture(event.pointerId)){
-        cubeScene.setPointerCapture(event.pointerId);
-      }
+    cube.style.transform=`translate3d(0,${currentTranslateY}px,0) rotateX(${currentRotation}deg) rotateY(${currentRotateY}deg) rotateZ(${currentRotateZ}deg)`;
+    updateMeta(currentRotation);
+
+    const delta=
+      Math.abs(targetRotation-currentRotation)+
+      Math.abs(targetRotateY-currentRotateY)+
+      Math.abs(targetRotateZ-currentRotateZ)+
+      Math.abs(targetTranslateY-currentTranslateY);
+
+    if(delta>.08){
+      rafId=requestAnimationFrame(renderCube);
+    }else{
+      currentRotation=targetRotation;
+      currentRotateY=targetRotateY;
+      currentRotateZ=targetRotateZ;
+      currentTranslateY=targetTranslateY;
+      cube.style.transform=`translate3d(0,${currentTranslateY}px,0) rotateX(${currentRotation}deg) rotateY(${currentRotateY}deg) rotateZ(${currentRotateZ}deg)`;
+      updateMeta(currentRotation);
+      rafId=0;
     }
-    setCubeRotation(startRotation-deltaY*.72,false);
-  });
-
-  function finishDrag(event){
-    if(!isDragging)return;
-    isDragging=false;
-    cubeScene.classList.remove('is-dragging');
-    if(cubeScene.hasPointerCapture(event.pointerId)){
-      cubeScene.releasePointerCapture(event.pointerId);
-    }
-    snapCube();
   }
 
-  cubeScene.addEventListener('pointerup',finishDrag);
-  cubeScene.addEventListener('pointercancel',finishDrag);
+  function scheduleRender(){
+    if(!rafId)rafId=requestAnimationFrame(renderCube);
+  }
 
-  disciplinesLinks.forEach(link=>{
-    link.addEventListener('dragstart',(event)=>{
-      event.preventDefault();
-    });
-    link.addEventListener('click',(event)=>{
-      if(didDrag){
-        event.preventDefault();
-        event.stopPropagation();
-        didDrag=false;
-      }
-    });
-  });
-  cubeScene.addEventListener('keydown',(event)=>{
-    if(!interactionEnabled)return;
-    if(event.key==='ArrowDown'){
-      event.preventDefault();
-      moveOneFace(-1);
-    }else if(event.key==='ArrowUp'){
-      event.preventDefault();
-      moveOneFace(1);
-    }
-  });
+  function onScroll(){
+    updateScrollTarget();
+    scheduleRender();
+  }
 
-  cube.style.transform='rotateX(0deg)';
+  function onResize(){
+    measureSection();
+    updateScrollTarget();
+    scheduleRender();
+  }
+
+  cubeScene.classList.add('is-visible');
+  giantWord.classList.add('is-visible');
+  measureSection();
+  updateScrollTarget();
   updateMeta(REST_OFFSET,true);
+  scheduleRender();
+
+  window.addEventListener('scroll',onScroll,{passive:true});
+  window.addEventListener('resize',onResize,{passive:true});
+  preferences.reduceMotion.addEventListener?.('change',onResize);
 }
 
 initMenu(preferences);
