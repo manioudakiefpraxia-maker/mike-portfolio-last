@@ -9,30 +9,21 @@ jobs:
   probe:
     runs-on: ubuntu-latest
     steps:
-      - name: Inspect Suno clip metadata and candidate media
+      - name: Download Suno media source
         shell: bash
         run: |
           set -euxo pipefail
           ID="7ad91fb1-dbe0-45a1-b58c-bca1959af508"
           curl -fsSL -A "Mozilla/5.0" "https://studio-api-prod.suno.com/api/clip/$ID" -o /tmp/meta.json
-          python3 - <<'PY'
+          MEDIA=$(python3 - <<'PY'
           import json
           d=json.load(open('/tmp/meta.json'))
-          print("id", d.get("id"))
-          print("status", d.get("status"))
-          print("title", d.get("title"))
-          print("display_name", d.get("display_name"))
-          print("is_public", d.get("is_public"))
-          print("audio_url", d.get("audio_url"))
-          print("media_urls", d.get("media_urls"))
-          PY
-          AUDIO=$(python3 - <<'PY'
-          import json
-          d=json.load(open('/tmp/meta.json'))
-          print(d.get('audio_url') or '')
+          print(d['media_urls'][0]['url'])
           PY
           )
-          if [ -n "$AUDIO" ]; then
-            curl -fL -A "Mozilla/5.0" -H "Referer: https://suno.com/" "$AUDIO" -o /tmp/audio.mp3 || true
-            if [ -s /tmp/audio.mp3 ]; then wc -c /tmp/audio.mp3; git hash-object /tmp/audio.mp3; fi
-          fi
+          echo "$MEDIA"
+          curl -fL --retry 2 -A "Mozilla/5.0" -H "Referer: https://suno.com/" "$MEDIA" -o /tmp/source.m4a
+          wc -c /tmp/source.m4a
+          file /tmp/source.m4a
+          sha256sum /tmp/source.m4a
+          ffprobe -v error -show_format -show_streams /tmp/source.m4a || true
