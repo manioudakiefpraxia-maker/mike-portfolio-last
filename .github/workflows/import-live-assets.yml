@@ -1,0 +1,136 @@
+name: Import verified portfolio assets
+
+on:
+  push:
+    paths:
+      - ".github/workflows/import-live-assets.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  import-assets:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download only byte-identical assets
+        shell: bash
+        env:
+          BASE: https://mike-androulakis-portfolio.iomi36.chatgpt.site
+        run: |
+          set -u
+          cat > /tmp/manifest.tsv <<'EOF'
+e3b16c9e122969bbc219907bd5e584718f10b78d	dist/aerium/campaign.webp
+a368653d5fc75c105a67c8fb0e409bd6eedccdc9	dist/aerium/catalogue.webp
+68aac4390ed1dc69382ad3817a674e9dae99e498	dist/aerium/components.webp
+7e021849804b3d0ec51f62e114cf61352371e371	dist/aerium/material-library.webp
+476bcb157916f519f52b9b136b74ca32aa8983e5	dist/aerium/posters.webp
+57a80a75183fba6e332f296796f31d87fa650027	dist/aerium/product.webp
+985a39eed90fd4762ebdbde1386d7933dfb433e0	dist/afterhours/visuals/01.webp
+e6323b494194182474aa65fddd81a5221eef6654	dist/afterhours/visuals/02.webp
+487e31a23e84ad49e05fea8b21df46eb732408be	dist/afterhours/visuals/03.webp
+623469b611e51ee0a03f18e7144cffb95b366d6a	dist/afterhours/visuals/04.webp
+471f45a60a291b8e37ede49021a595cdde893cb5	dist/afterhours/visuals/05.webp
+1a5b1eb817940fa29e970eab4ea4d692764686d4	dist/afterhours/visuals/06.webp
+bd5da609186ec6c9d80d1bfe02df4005246ed085	dist/afterhours/visuals/07.webp
+a32c17da54bc4ac1e8dfc933f83a35a4e8b39d04	dist/afterhours/visuals/08.webp
+69dcdcd14e5dfc0472eac8205fd7c22d51d0af0f	dist/afterhours/visuals/09-poster-wall.webp
+83023203a2137443c3565d965186424aa1d280ca	dist/afterhours/visuals/10-night-installation.webp
+acc1afc72203de42d28e1834c26bec77ac27bdad	dist/afterhours/visuals/11-night-kit.webp
+abe0992146fa97c82ea05be8a67a4a3387dd93be	dist/apex-racing/graphic-hero.webp
+b1627066d8f39477a821be55641e8a93ac88e660	dist/apex-racing/identity-kit.webp
+094f592c9759a13717b256c03317d2683c3c55f9	dist/apex-racing/pit-environment.webp
+8a78c4d4819cc17de6d928bae209016dce79b869	dist/apex-racing/posters.webp
+e6de900036b6e71736f9385a85beb18f452cb97d	dist/apex-racing/social-system.webp
+ad88cbbc75672fe3503f223c5b3c0f9cb905b543	dist/cue/venue-planning.webp
+aa1324e1d3fbbc7c095bbc853e7ddb753a91e4db	dist/daily-form/visuals/02.webp
+e2f2ebf11f48e1b944a327919c8b4362a7e9bf4b	dist/daily-form/visuals/03.webp
+0cf487cb74e9e5a72966a2b53076645bf5fcb5a9	dist/daily-form/visuals/04.webp
+48e8075322ed532993aacb3c2039200fd8a8b25d	dist/daily-form/visuals/05.webp
+2844e8523bd9bacf0b28219af2e0f5cccdb3fd26	dist/daily-form/visuals/06.webp
+b45170f64f6146661496734d0a71ae0b90b4d98a	dist/daily-form/visuals/07.webp
+9a749b97ebef272adc14cf240ee2719880a30dd1	dist/daily-form/visuals/08.webp
+fb99b078ef27d4f5b3a834d7ac1d2a76b4bdc202	dist/daily-form/visuals/09-brand-system.webp
+6c31107554b56ceac2a207ba4a7089cff3ea20a2	dist/daily-form/visuals/10-morning-collection.webp
+b26d8e75e83c456d3147afdc96ab9f9f833ce9d9	dist/daily-form/visuals/11-retail.webp
+c07d76fee3c79c55bb97b1eca147d2c95bc2a50b	dist/forma/graphic-hero.webp
+29362aaa2ebd1dc0bb34ad30d38d44ca4f77a878	dist/forma/publication.webp
+0cda01067e28718542e5ff103f1d94c32f54038e	dist/forma/wayfinding.webp
+afb20d45d1e283c2b96fe7aafadf1ce71b17eebc	dist/ichnos/graphic-v4/01-hero.webp
+ec0542ba3ccab493f956cb7428729c3fc75164b5	dist/ichnos/graphic-v4/02-identity.webp
+66e5f6bd88f3a412aa4e891d0b06446c4eada2f2	dist/ichnos/graphic-v4/03-posters.webp
+b6a2783ca4dc8f784cb024de02f06bc7720f8c65	dist/ichnos/graphic-v4/04-packaging.webp
+4f9be0e617b006129fa704c2c7cfef8649f76422	dist/ichnos/graphic-v4/05-editorial.webp
+5ae5810feb43b3cf76d922d39431cf426f7716e2	dist/ichnos/graphic-v4/06-architecture.webp
+ff19882315c6a432064b742791003ab2e7ef8ab0	dist/ichnos/graphic-v4/07-closing.webp
+17999c0835e6f62b6eb1500be48b4d5c25cd4b91	dist/morph/digital-campaign.webp
+fe0e492a04a620d9d35daaef577c89fac163cdba	dist/morph/graphic-hero.webp
+f6efaa4675a0ef10844525e44881526c67db9ee4	dist/morph/identity-kit.webp
+2360d214d1507197b91034655b7dab62d3d09f86	dist/morph/packaging.webp
+bdfff64ee7766e4d34205b3cae62cac59490a6ff	dist/morph/posters.webp
+c473d67e190050130d6755f811ce0be13f2e0e99	dist/null-vector/08-navigation-chamber.webp
+19a9a9a0a81283feb83f51f9af231ba974ef531d	dist/null-vector/collectors.webp
+d2f5e7b4bb08909d94cc18c9af76dee1a8746b74	dist/null-vector/field-kit.webp
+a71bdbb7c22e53cd2c919b43f3735463ec62351d	dist/null-vector/hud.webp
+4525988bc1e57afc22be353351f3e403a217ab95	dist/null-vector/key-art.webp
+c06e6954b0ea3e780cca65e01e3abdc3d60f5026	dist/null-vector/poster.webp
+47694f119692c915e1f51dace7739eb447665b51	dist/offgrid/offgrid-logo-light.svg
+a5405012ccc23c7b6675582b10f9620cca0b9b3f	dist/offgrid/visuals/01.webp
+bf23a0fb9c2f9c481ae59e7d455b80b642bc9456	dist/offgrid/visuals/02.webp
+6d8cd2916ec42479b59b007f6fc81eaf0cb69b7e	dist/offgrid/visuals/03.png
+7ae1268e08c621862ddd32e6d2b9ddde9b96b7a1	dist/offgrid/visuals/05.webp
+ef2af913bde7a843d29e730eb52c884a7dc89870	dist/offgrid/visuals/06.webp
+12e659de233362dfb92c9e0ee86296fe436d4cce	dist/offgrid/visuals/07.webp
+5a89747b6f715e3d5cdadb34372fd7ef977d4eb4	dist/offgrid/visuals/08.webp
+cbe71739a6ae50e6fc9789a749ad8734cbb6cb57	dist/offgrid/visuals/09-graphic-system.webp
+be2135f198c9498f982a757f986f2e732761e45c	dist/offgrid/visuals/10-expedition-hero.webp
+63b910588a51e7043951afad4e57fa597e0eedc2	dist/offgrid/visuals/11-field-kit.webp
+b7c231414740e8cf1aa97273d484d47245d64a6d	dist/on-air/visuals/01.webp
+dcc289f8aa10dc5070a0ee7dbb37d0799f420571	dist/on-air/visuals/02.webp
+7b4dda785478d2bef2a17a7c6ac94ed3592670b6	dist/on-air/visuals/03-lower-third.svg
+089d1eb46ce5d90aae076a3835af787269b56f3d	dist/on-air/visuals/04-now-next.svg
+d915e10820bef4964adbaac03906592f6367cd5d	dist/on-air/visuals/05.webp
+8de65306a77c8eac1c9bd6ac52950e45693f0a02	dist/on-air/visuals/06.webp
+da3069a9daaba9c6452e54237129f59d41f41f67	dist/on-air/visuals/07.webp
+574d1954d0905b57494131b6ad308c8d06c0fffc	dist/on-air/visuals/08-signoff.svg
+a54845cda7af5042cab72d7dca22c35e203cfcd7	dist/on-air/visuals/09-broadcast-system.webp
+ae312773f426733ae27630f63d12186a2fb82ac7	dist/on-air/visuals/10-studio.webp
+f01b032dd78585a59f8907e21fd8eebe172cab31	dist/on-air/visuals/hero-v2.webp
+0e1daaad618d936783ddd18e0616cc5951e41070	dist/relay/visuals/01.webp
+9137a77dabed4f8196e9495eca8d8f81fe8f7680	dist/relay/visuals-v2/01-hero.webp
+2802637c2de6ebe1b70d588512358eb137949eb2	dist/relay/visuals-v2/03-poster.webp
+86b1d175d6127f876d63ec15138ed9aedcbddb88	dist/relay/visuals-v2/04-mobile.webp
+8d1ec80f1c7aad95ccb76a57e3f808eaffc61838	dist/relay/visuals-v2/05-installation.webp
+b1b730206c6c50aeab2dfdc144cf572e86fb7e97	dist/relay/visuals-v2/06-print-kit.webp
+2e5fbea1cab100d1797be1cce403341a02ef0643	dist/relay/visuals-v2/07-closing.webp
+EOF
+          ok=0
+          fail=0
+          while IFS=$'\t' read -r expected path; do
+            rel="${path#dist/}"
+            encoded=$(python3 -c 'import sys,urllib.parse; print(urllib.parse.quote(sys.argv[1], safe="/"))' "$rel")
+            tmp=$(mktemp)
+            if curl -fsSL --retry 2 "$BASE/$encoded" -o "$tmp"; then
+              actual=$(git hash-object "$tmp")
+              if [ "$actual" = "$expected" ]; then
+                mkdir -p "$(dirname "$path")"
+                mv "$tmp" "$path"
+                echo "OK $path"
+                ok=$((ok+1))
+              else
+                echo "MISMATCH $path expected=$expected actual=$actual"
+                rm -f "$tmp"
+                fail=$((fail+1))
+              fi
+            else
+              echo "MISSING $path"
+              rm -f "$tmp"
+              fail=$((fail+1))
+            fi
+          done < /tmp/manifest.tsv
+          echo "verified=$ok failed=$fail"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add dist
+          git diff --cached --quiet || git commit -m "Import verified portfolio assets"
+          git push
