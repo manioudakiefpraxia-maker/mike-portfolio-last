@@ -1,0 +1,13 @@
+{
+  "name": "mike-androulakis-portfolio",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Mike Androulakis creative design portfolio.",
+  "scripts": {
+    "dev": "npx serve dist",
+    "start": "npx serve dist"
+  },
+  "devDependencies": {
+    "serve": "^14.2.4"
+  }
+}
