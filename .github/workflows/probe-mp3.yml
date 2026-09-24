@@ -13,6 +13,6 @@ jobs:
         shell: bash
         run: |
           set -euxo pipefail
-          curl -fL --retry 2 "https://mike-androulakis-portfolio.iomi36.chatgpt.site/Deep%20Space%20Drones.mp3" -o /tmp/audio.mp3
+          curl -fL --retry 2 "https://cdn1.suno.ai/7ad91fb1-dbe0-45a1-b58c-bca1959af508.mp3" -o /tmp/audio.mp3
           wc -c /tmp/audio.mp3
           git hash-object /tmp/audio.mp3
