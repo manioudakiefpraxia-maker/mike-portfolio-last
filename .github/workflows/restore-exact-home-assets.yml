@@ -1,0 +1,41 @@
+name: Restore exact homepage assets
+on:
+  push:
+    paths:
+      - ".github/workflows/restore-exact-home-assets.yml"
+permissions:
+  contents: write
+jobs:
+  restore:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch and verify exact static assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          base="https://mike-androulakis-portfolio.iomi36.chatgpt.site"
+          fetch_verify() {
+            p="$1"; expected="$2"
+            mkdir -p "$(dirname "$p")"
+            rel="${p#dist/}"
+            curl -fL --retry 3 -A "Mozilla/5.0" "$base/$rel" -o "$p"
+            got="$(git hash-object "$p")"
+            echo "$p -> $got"
+            test "$got" = "$expected"
+          }
+          fetch_verify "dist/css/home.css" "d640ed2769e7c3475c85c3afa6436e9fe11cddb5"
+          fetch_verify "dist/js/app.js" "e4b1634d9c96f1690061efd47bac0e14ea225f54"
+          fetch_verify "dist/js/audio.js" "fb34f8bc96e42871eab82aebeaf0161f80bfab8d"
+          fetch_verify "dist/js/bio.js" "76d797278ca21c889f421f11c9d0dcf6b3128a13"
+          fetch_verify "dist/js/hero.js" "4b173c4bb69e608767fc2bd94835e700e14f2ed1"
+          fetch_verify "dist/js/menu.js" "c48cd39fa03a2aa59d712fdfc6832089acf98a37"
+          fetch_verify "dist/js/particles.js" "567a63b20bb0002869b8d0da962cc0363fc8ae1d"
+      - name: Commit exact static assets
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git pull --rebase origin main
+          git add dist/css/home.css dist/js
+          git diff --cached --quiet || git commit -m "Restore exact homepage assets"
+          git push
