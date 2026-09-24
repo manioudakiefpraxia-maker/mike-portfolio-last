@@ -1,0 +1,8 @@
+'use strict';
+const reduceChapters=matchMedia('(prefers-reduced-motion: reduce)');
+const chapters=[...document.querySelectorAll('.chapter')];let chapterFrame=0;
+function updateChapters(){chapterFrame=0;chapters.forEach(el=>{const r=el.getBoundingClientRect(),p=Math.max(0,Math.min(1,(innerHeight-r.top)/(innerHeight*.7)));el.style.setProperty('--chapter-progress',reduceChapters.matches?1:p);el.style.setProperty('--chapter-shift',reduceChapters.matches?0:1-p)})}
+addEventListener('scroll',()=>{if(!chapterFrame)chapterFrame=requestAnimationFrame(updateChapters)},{passive:true});addEventListener('resize',updateChapters);updateChapters();
+document.querySelectorAll('[data-tab]').forEach(button=>button.addEventListener('click',()=>{document.querySelectorAll('[data-tab]').forEach(b=>{b.classList.toggle('selected',b===button);b.setAttribute('aria-pressed',String(b===button))});const next=button.dataset.tab==='Upcoming';document.getElementById('task-time').textContent=next?'Tomorrow':'09:30';document.getElementById('task-name').textContent=next?'Test the experience':'Shape the idea';document.getElementById('task-next').textContent=next?'Refine the details':'Build the first prototype'}));
+document.getElementById('invert-web').addEventListener('click',function(){const active=document.querySelector('.web-stage').classList.toggle('inverted');this.setAttribute('aria-pressed',String(active))});
+document.getElementById('motion-toggle').addEventListener('click',function(){const paused=document.querySelector('.motion-stage').classList.toggle('paused');this.setAttribute('aria-pressed',String(paused));this.textContent=paused?'Play motion ▷':'Pause motion Ⅱ'});
