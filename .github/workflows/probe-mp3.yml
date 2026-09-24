@@ -9,21 +9,43 @@ jobs:
   probe:
     runs-on: ubuntu-latest
     steps:
-      - name: Download Suno media source
+      - name: Inspect source audio and image
         shell: bash
         run: |
           set -euxo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ffmpeg
           ID="7ad91fb1-dbe0-45a1-b58c-bca1959af508"
           curl -fsSL -A "Mozilla/5.0" "https://studio-api-prod.suno.com/api/clip/$ID" -o /tmp/meta.json
+          python3 - <<'PY'
+          import json
+          d=json.load(open('/tmp/meta.json'))
+          for k in ['id','title','display_name','created_at','image_url','image_large_url','metadata','media_urls']:
+              print(k, repr(d.get(k)))
+          PY
           MEDIA=$(python3 - <<'PY'
           import json
           d=json.load(open('/tmp/meta.json'))
           print(d['media_urls'][0]['url'])
           PY
           )
-          echo "$MEDIA"
-          curl -fL --retry 2 -A "Mozilla/5.0" -H "Referer: https://suno.com/" "$MEDIA" -o /tmp/source.m4a
+          curl -fL -A "Mozilla/5.0" -H "Referer: https://suno.com/" "$MEDIA" -o /tmp/source.m4a
           wc -c /tmp/source.m4a
-          file /tmp/source.m4a
-          sha256sum /tmp/source.m4a
-          ffprobe -v error -show_format -show_streams /tmp/source.m4a || true
+          od -An -tx1 -N64 /tmp/source.m4a
+          ffprobe -hide_banner -v error -show_format -show_streams -of json /tmp/source.m4a || true
+          for KEY in image_url image_large_url; do
+            U=$(python3 - "$KEY" <<'PY'
+          import json,sys
+          d=json.load(open('/tmp/meta.json'))
+          print(d.get(sys.argv[1]) or '')
+          PY
+            )
+            if [ -n "$U" ]; then
+              curl -fL -A "Mozilla/5.0" "$U" -o "/tmp/$KEY" || true
+              if [ -s "/tmp/$KEY" ]; then
+                wc -c "/tmp/$KEY"
+                git hash-object "/tmp/$KEY"
+                file "/tmp/$KEY"
+              fi
+            fi
+          done
