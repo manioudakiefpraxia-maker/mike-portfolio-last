@@ -1,0 +1,57 @@
+name: Import exact binary assets
+on:
+  push:
+    paths:
+      - ".github/workflows/import-exact-binaries.yml"
+permissions:
+  contents: write
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download and verify binaries
+        run: |
+          python3 - <<'PY'
+          import hashlib, json, pathlib, time, urllib.parse, urllib.request
+          manifest={"dist/aerium/campaign.webp":{"sha":"e3b16c9e122969bbc219907bd5e584718f10b78d","size":130800},"dist/aerium/catalogue.webp":{"sha":"a368653d5fc75c105a67c8fb0e409bd6eedccdc9","size":77730},"dist/aerium/components.webp":{"sha":"68aac4390ed1dc69382ad3817a674e9dae99e498","size":70618},"dist/aerium/material-library.webp":{"sha":"7e021849804b3d0ec51f62e114cf61352371e371","size":160568},"dist/aerium/posters.webp":{"sha":"476bcb157916f519f52b9b136b74ca32aa8983e5","size":71950},"dist/aerium/product.webp":{"sha":"57a80a75183fba6e332f296796f31d87fa650027","size":80484},"dist/afterhours/visuals/01.webp":{"sha":"985a39eed90fd4762ebdbde1386d7933dfb433e0","size":307532},"dist/afterhours/visuals/02.webp":{"sha":"e6323b494194182474aa65fddd81a5221eef6654","size":189898},"dist/afterhours/visuals/03.webp":{"sha":"487e31a23e84ad49e05fea8b21df46eb732408be","size":45562},"dist/afterhours/visuals/04.webp":{"sha":"623469b611e51ee0a03f18e7144cffb95b366d6a","size":259992},"dist/afterhours/visuals/05.webp":{"sha":"471f45a60a291b8e37ede49021a595cdde893cb5","size":319780},"dist/afterhours/visuals/06.webp":{"sha":"1a5b1eb817940fa29e970eab4ea4d692764686d4","size":248918},"dist/afterhours/visuals/07.webp":{"sha":"bd5da609186ec6c9d80d1bfe02df4005246ed085","size":213442},"dist/afterhours/visuals/08.webp":{"sha":"a32c17da54bc4ac1e8dfc933f83a35a4e8b39d04","size":456638},"dist/afterhours/visuals/09-poster-wall.webp":{"sha":"69dcdcd14e5dfc0472eac8205fd7c22d51d0af0f","size":260982},"dist/afterhours/visuals/10-night-installation.webp":{"sha":"83023203a2137443c3565d965186424aa1d280ca","size":240400},"dist/afterhours/visuals/11-night-kit.webp":{"sha":"acc1afc72203de42d28e1834c26bec77ac27bdad","size":162322},"dist/apex-racing/graphic-hero.webp":{"sha":"abe0992146fa97c82ea05be8a67a4a3387dd93be","size":631298},"dist/apex-racing/identity-kit.webp":{"sha":"b1627066d8f39477a821be55641e8a93ac88e660","size":496578},"dist/apex-racing/pit-environment.webp":{"sha":"094f592c9759a13717b256c03317d2683c3c55f9","size":122522},"dist/apex-racing/posters.webp":{"sha":"8a78c4d4819cc17de6d928bae209016dce79b869","size":200052},"dist/apex-racing/social-system.webp":{"sha":"e6de900036b6e71736f9385a85beb18f452cb97d","size":428044},"dist/cue/venue-planning.webp":{"sha":"ad88cbbc75672fe3503f223c5b3c0f9cb905b543","size":110922},"dist/daily-form/visuals/02.webp":{"sha":"aa1324e1d3fbbc7c095bbc853e7ddb753a91e4db","size":136696},"dist/daily-form/visuals/03.webp":{"sha":"e2f2ebf11f48e1b944a327919c8b4362a7e9bf4b","size":168022},"dist/daily-form/visuals/04.webp":{"sha":"0cf487cb74e9e5a72966a2b53076645bf5fcb5a9","size":163006},"dist/daily-form/visuals/05.webp":{"sha":"48e8075322ed532993aacb3c2039200fd8a8b25d","size":271592},"dist/daily-form/visuals/06.webp":{"sha":"2844e8523bd9bacf0b28219af2e0f5cccdb3fd26","size":160740},"dist/daily-form/visuals/07.webp":{"sha":"b45170f64f6146661496734d0a71ae0b90b4d98a","size":146672},"dist/daily-form/visuals/08.webp":{"sha":"9a749b97ebef272adc14cf240ee2719880a30dd1","size":238604},"dist/daily-form/visuals/09-brand-system.webp":{"sha":"fb99b078ef27d4f5b3a834d7ac1d2a76b4bdc202","size":95254},"dist/daily-form/visuals/10-morning-collection.webp":{"sha":"6c31107554b56ceac2a207ba4a7089cff3ea20a2","size":76304},"dist/daily-form/visuals/11-retail.webp":{"sha":"b26d8e75e83c456d3147afdc96ab9f9f833ce9d9","size":109594},"dist/Deep Space Drones.mp3":{"sha":"a8f2832db7248f2c7be85d2334ab39bf3bbda244","size":5609342},"dist/forma/graphic-hero.webp":{"sha":"c07d76fee3c79c55bb97b1eca147d2c95bc2a50b","size":423706},"dist/forma/publication.webp":{"sha":"29362aaa2ebd1dc0bb34ad30d38d44ca4f77a878","size":93638},"dist/forma/wayfinding.webp":{"sha":"0cda01067e28718542e5ff103f1d94c32f54038e","size":431526},"dist/ichnos/graphic-v4/01-hero.webp":{"sha":"afb20d45d1e283c2b96fe7aafadf1ce71b17eebc","size":114280},"dist/ichnos/graphic-v4/02-identity.webp":{"sha":"ec0542ba3ccab493f956cb7428729c3fc75164b5","size":158500},"dist/ichnos/graphic-v4/03-posters.webp":{"sha":"66e5f6bd88f3a412aa4e891d0b06446c4eada2f2","size":101590},"dist/ichnos/graphic-v4/04-packaging.webp":{"sha":"b6a2783ca4dc8f784cb024de02f06bc7720f8c65","size":322244},"dist/ichnos/graphic-v4/05-editorial.webp":{"sha":"4f9be0e617b006129fa704c2c7cfef8649f76422","size":158856},"dist/ichnos/graphic-v4/06-architecture.webp":{"sha":"5ae5810feb43b3cf76d922d39431cf426f7716e2","size":187662},"dist/ichnos/graphic-v4/07-closing.webp":{"sha":"ff19882315c6a432064b742791003ab2e7ef8ab0","size":191134},"dist/morph/digital-campaign.webp":{"sha":"17999c0835e6f62b6eb1500be48b4d5c25cd4b91","size":85764},"dist/morph/graphic-hero.webp":{"sha":"fe0e492a04a620d9d35daaef577c89fac163cdba","size":133042},"dist/morph/identity-kit.webp":{"sha":"f6efaa4675a0ef10844525e44881526c67db9ee4","size":114682},"dist/morph/packaging.webp":{"sha":"2360d214d1507197b91034655b7dab62d3d09f86","size":120138},"dist/morph/posters.webp":{"sha":"bdfff64ee7766e4d34205b3cae62cac59490a6ff","size":87332},"dist/null-vector/08-navigation-chamber.webp":{"sha":"c473d67e190050130d6755f811ce0be13f2e0e99","size":153010},"dist/null-vector/collectors.webp":{"sha":"19a9a9a0a81283feb83f51f9af231ba974ef531d","size":225062},"dist/null-vector/field-kit.webp":{"sha":"d2f5e7b4bb08909d94cc18c9af76dee1a8746b74","size":204400},"dist/null-vector/hud.webp":{"sha":"a71bdbb7c22e53cd2c919b43f3735463ec62351d","size":83048},"dist/null-vector/key-art.webp":{"sha":"4525988bc1e57afc22be353351f3e403a217ab95","size":120280},"dist/null-vector/poster.webp":{"sha":"c06e6954b0ea3e780cca65e01e3abdc3d60f5026","size":130864},"dist/offgrid/visuals/01.webp":{"sha":"a5405012ccc23c7b6675582b10f9620cca0b9b3f","size":338580},"dist/offgrid/visuals/02.webp":{"sha":"bf23a0fb9c2f9c481ae59e7d455b80b642bc9456","size":533258},"dist/offgrid/visuals/03.png":{"sha":"6d8cd2916ec42479b59b007f6fc81eaf0cb69b7e","size":2996126},"dist/offgrid/visuals/05.webp":{"sha":"7ae1268e08c621862ddd32e6d2b9ddde9b96b7a1","size":173336},"dist/offgrid/visuals/06.webp":{"sha":"ef2af913bde7a843d29e730eb52c884a7dc89870","size":143980},"dist/offgrid/visuals/07.webp":{"sha":"12e659de233362dfb92c9e0ee86296fe436d4cce","size":253720},"dist/offgrid/visuals/08.webp":{"sha":"5a89747b6f715e3d5cdadb34372fd7ef977d4eb4","size":172690},"dist/offgrid/visuals/09-graphic-system.webp":{"sha":"cbe71739a6ae50e6fc9789a749ad8734cbb6cb57","size":314762},"dist/offgrid/visuals/10-expedition-hero.webp":{"sha":"be2135f198c9498f982a757f986f2e732761e45c","size":143432},"dist/offgrid/visuals/11-field-kit.webp":{"sha":"63b910588a51e7043951afad4e57fa597e0eedc2","size":327120},"dist/on-air/visuals/01.webp":{"sha":"b7c231414740e8cf1aa97273d484d47245d64a6d","size":39616},"dist/on-air/visuals/02.webp":{"sha":"dcc289f8aa10dc5070a0ee7dbb37d0799f420571","size":42788},"dist/on-air/visuals/05.webp":{"sha":"d915e10820bef4964adbaac03906592f6367cd5d","size":182518},"dist/on-air/visuals/06.webp":{"sha":"8de65306a77c8eac1c9bd6ac52950e45693f0a02","size":131566},"dist/on-air/visuals/07.webp":{"sha":"da3069a9daaba9c6452e54237129f59d41f41f67","size":64216},"dist/on-air/visuals/09-broadcast-system.webp":{"sha":"a54845cda7af5042cab72d7dca22c35e203cfcd7","size":114730},"dist/on-air/visuals/10-studio.webp":{"sha":"ae312773f426733ae27630f63d12186a2fb82ac7","size":99056},"dist/on-air/visuals/hero-v2.webp":{"sha":"f01b032dd78585a59f8907e21fd8eebe172cab31","size":50168},"dist/relay/visuals/01.webp":{"sha":"0e1daaad618d936783ddd18e0616cc5951e41070","size":51708},"dist/relay/visuals-v2/01-hero.webp":{"sha":"9137a77dabed4f8196e9495eca8d8f81fe8f7680","size":39688},"dist/relay/visuals-v2/03-poster.webp":{"sha":"2802637c2de6ebe1b70d588512358eb137949eb2","size":65364},"dist/relay/visuals-v2/04-mobile.webp":{"sha":"86b1d175d6127f876d63ec15138ed9aedcbddb88","size":36328},"dist/relay/visuals-v2/05-installation.webp":{"sha":"8d1ec80f1c7aad95ccb76a57e3f808eaffc61838","size":135056},"dist/relay/visuals-v2/06-print-kit.webp":{"sha":"b1b730206c6c50aeab2dfdc144cf572e86fb7e97","size":61492},"dist/relay/visuals-v2/07-closing.webp":{"sha":"2e5fbea1cab100d1797be1cce403341a02ef0643","size":356496}}
+          base="https://mike-androulakis-portfolio.iomi36.chatgpt.site/"
+          def blob_sha(data):
+              return hashlib.sha1(b"blob "+str(len(data)).encode()+b"\0"+data).hexdigest()
+          for p, meta in manifest.items():
+              out=pathlib.Path(p)
+              if out.exists():
+                  cur=out.read_bytes()
+                  if len(cur)==meta["size"] and blob_sha(cur)==meta["sha"]:
+                      print("already exact",p)
+                      continue
+              rel=p[len("dist/"):]
+              url=base+urllib.parse.quote(rel,safe="/")
+              last=None
+              for attempt in range(4):
+                  try:
+                      req=urllib.request.Request(url,headers={"User-Agent":"Mozilla/5.0"})
+                      with urllib.request.urlopen(req,timeout=120) as r:
+                          data=r.read()
+                      got=blob_sha(data)
+                      if len(data)!=meta["size"] or got!=meta["sha"]:
+                          raise RuntimeError(f"hash/size mismatch for {p}: size={len(data)} sha={got}")
+                      out.parent.mkdir(parents=True,exist_ok=True)
+                      out.write_bytes(data)
+                      print("verified",p,len(data),got)
+                      last=None
+                      break
+                  except Exception as e:
+                      last=e
+                      time.sleep(2*(attempt+1))
+              if last is not None:
+                  raise last
+          
+          PY
+      - name: Commit verified binaries
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add dist
+          git diff --cached --quiet || git commit -m "Import exact binary assets"
+          git push
