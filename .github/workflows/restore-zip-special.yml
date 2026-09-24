@@ -1,0 +1,44 @@
+name: Restore exact ZIP homepage files
+
+on:
+  push:
+    paths:
+      - ".github/workflows/restore-zip-special.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  restore:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Extract and verify exact ZIP files
+        shell: bash
+        run: |
+          set -euo pipefail
+          tar -xJf .tmp/special_texts.tar.xz
+          cat > /tmp/expected.tsv <<'EOF'
+          6ca496614d4ee5c5801cc2264707f39d26c4ed17	dist/.vscode/settings.json
+          d640ed2769e7c3475c85c3afa6436e9fe11cddb5	dist/css/home.css
+          5f53afebbf43cc7ee862e4ee1b6269ae480bfcd7	dist/index.html
+          e4b1634d9c96f1690061efd47bac0e14ea225f54	dist/js/app.js
+          fb34f8bc96e42871eab82aebeaf0161f80bfab8d	dist/js/audio.js
+          76d797278ca21c889f421f11c9d0dcf6b3128a13	dist/js/bio.js
+          4b173c4bb69e608767fc2bd94835e700e14f2ed1	dist/js/hero.js
+          c48cd39fa03a2aa59d712fdfc6832089acf98a37	dist/js/menu.js
+          567a63b20bb0002869b8d0da962cc0363fc8ae1d	dist/js/particles.js
+          EOF
+          while IFS=$'\t' read -r expected path; do
+            [ "$(git hash-object "$path")" = "$expected" ] || { echo "SHA mismatch: $path"; exit 1; }
+          done < /tmp/expected.tsv
+          rm -rf .tmp
+          rm -f .github/workflows/restore-zip-special.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Restore exact ZIP homepage files"
+          git pull --rebase origin main
+          git push
