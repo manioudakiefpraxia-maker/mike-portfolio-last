@@ -1,36 +1,27 @@
-import {clamp} from './scroll.js';
+const ENTER_THRESHOLD = 0.57;
+const SECONDARY_THRESHOLD = 0.78;
 
-export function initBio(scene){
-  const copy=document.getElementById('bio-copy');
-  if(!copy)return;
+export function initBio(scene) {
+  const copy = document.getElementById("bio-copy");
+  if (!copy) return;
 
-  const words=[];
-  copy.querySelectorAll('[data-bio]').forEach(line=>{
-    const text=line.dataset.bio||'';
-    line.textContent='';
-    text.split(' ').forEach((word,index,array)=>{
-      const span=document.createElement('span');
-      span.className='bio-word';
-      span.textContent=word+(index<array.length-1?' ':'');
-      line.appendChild(span);
-      words.push(span);
-    });
-  });
+  const primary = copy.querySelector(".bio-text:not(.bio-text-secondary)");
+  const secondary = copy.querySelector(".bio-text-secondary");
+  if (!primary || !secondary) return;
 
-  scene.subscribe(progress=>{
-    const trigger=.57;
-    const reveal=clamp((progress-trigger)/.40);
-    const active=progress>=trigger;
+  primary.textContent = primary.dataset.bio || primary.textContent || "";
+  secondary.textContent = secondary.dataset.bio || secondary.textContent || "";
+  primary.classList.add("bio-text-primary");
 
-    copy.classList.toggle('is-visible',active);
-    copy.setAttribute('aria-hidden',String(!active));
+  const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
 
-    const count=Math.max(1,words.length-1);
-    words.forEach((word,index)=>{
-      const start=(index/count)*.88;
-      const local=clamp((reveal-start)/.12);
-      word.style.opacity=String(local);
-      word.style.transform='translate3d(0,'+((1-local)*5).toFixed(2)+'px,0)';
-    });
+  scene.subscribe((progress) => {
+    const active = progress >= ENTER_THRESHOLD;
+    const showSecondary = progress >= SECONDARY_THRESHOLD;
+
+    copy.classList.toggle("is-visible", active);
+    copy.classList.toggle("bio-secondary-visible", active && showSecondary);
+    copy.classList.toggle("bio-simple-visible", reduceMotion.matches && active);
+    copy.setAttribute("aria-hidden", String(!active));
   });
 }

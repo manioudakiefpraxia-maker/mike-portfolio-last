@@ -1,136 +1,275 @@
 <!doctype html>
 <html lang="en">
-<head>
-<meta charset="utf-8">
-<script>document.documentElement.classList.add('js','loading-active');history.scrollRestoration='manual';</script>
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="theme-color" content="#080808">
-<title>Mike — Creative Designer</title>
-<meta name="description" content="Graphic, motion, UI/UX and web design by Mike.">
-<link rel="stylesheet" href="css/home.css">
-<script type="module" src="js/app.js"></script>
-</head>
-<body>
-<div class="loading" id="loading" aria-hidden="true"><span id="loading-count">0%</span></div>
-
-<header class="site-nav">
-  <a class="nav-mark" href="#top" aria-label="Home"><span class="ma-m">M</span><span class="ma-a">A</span></a>
-  <nav class="desktop-nav" aria-label="Primary">
-    <a class="scramble-link" href="#work" data-label="WORK">WORK</a>
-    <a class="scramble-link" href="#about" data-label="ABOUT">ABOUT</a>
-    <a class="scramble-link" href="cv/index.html" data-label="CV">CV</a>
-    <a class="scramble-link" href="https://gr.linkedin.com/in/michail-androulakis-525161168" target="_blank" rel="noreferrer" data-label="CONTACT">CONTACT</a>
-  </nav>
-  <button id="menu-open" type="button" aria-label="Open menu" aria-expanded="false" aria-controls="menu"><span></span><span></span></button>
-</header>
-
-<dialog id="menu">
-  <a class="menu-mark nav-mark" href="#top" aria-label="Home"><span class="ma-m">M</span><span class="ma-a">A</span></a>
-  <button id="menu-close" type="button" aria-label="Close menu"><span></span><span></span></button>
-  <nav aria-label="Mobile primary">
-    <a href="#work">Work</a>
-    <a href="#about">About</a>
-    <a href="cv/index.html">CV</a>
-    <a href="https://gr.linkedin.com/in/michail-androulakis-525161168" target="_blank" rel="noreferrer">Contact</a>
-  </nav>
-</dialog>
-
-<main id="top">
-  <section class="scroll-stage" id="scroll-stage" aria-label="Creative Designer introduction">
-    <section class="home-hero" id="hero">
-      <canvas class="particles" id="particles" aria-hidden="true"></canvas>
-
-      <div class="bio-copy" id="bio-copy" aria-hidden="true">
-        <p class="bio-text" data-bio="I’m Mike, a creative designer working across identity, digital, motion and web."></p>
-        <p class="bio-text bio-text-secondary" data-bio="I build visual systems and interactive experiences where concept, movement and technology meet."></p>
-      </div>
-
-      <div class="mouse-glow" id="mouse-glow" aria-hidden="true"></div>
-
-      <div class="hero-center" id="hero-center">
-        <div class="type-lockup" aria-label="Creative Designer">
-          <div class="word first" id="creative" data-word="CREATIVE"></div>
-          <div class="word second" id="designer" data-word="DESIGNER"></div>
-        </div>
-        <div class="hero-note" aria-label="Creative disciplines">
-          <button type="button" class="hero-note-item">GRAPHIC</button>
-          <span aria-hidden="true">·</span>
-          <button type="button" class="hero-note-item">MOTION</button>
-          <span aria-hidden="true">·</span>
-          <button type="button" class="hero-note-item">UI/UX</button>
-          <span aria-hidden="true">·</span>
-          <button type="button" class="hero-note-item">WEB</button>
-        </div>
-      </div>
-    </section>
-  </section>
-
-  <section class="work-section disciplines-section" id="work" aria-label="Disciplines">
-    <div class="disciplines-work-label">02 / WORK</div>
-
-    <div class="disciplines-visual-stack">
-      <div class="disciplines-type-stage" aria-hidden="true">
-        <span class="disciplines-giant-word">GRAPHIC</span>
-      </div>
-
-      <div class="disciplines-cube-scene" tabindex="0" aria-label="Drag vertically to explore disciplines">
-        <div class="disciplines-cube">
-          <a class="disciplines-link disciplines-face disciplines-front disciplines-main-face" href="forma/index.html" aria-label="Open Graphic project" draggable="false">
-            <div class="disciplines-face-content">
-              <div class="disciplines-face-title"><span class="disciplines-face-number">01</span>GRAPHIC</div>
-              <div class="disciplines-face-copy">
-                <div class="disciplines-face-description">Identity systems and visual direction.</div>
-                <span class="disciplines-face-link-label">VIEW PROJECT ↗</span>
-              </div>
-            </div>
-          </a>
-          <a class="disciplines-link disciplines-face disciplines-top disciplines-main-face" href="cue/index.html" aria-label="Open Motion project" draggable="false">
-            <div class="disciplines-face-content">
-              <div class="disciplines-face-title"><span class="disciplines-face-number">02</span>MOTION</div>
-              <div class="disciplines-face-copy">
-                <div class="disciplines-face-description">Motion design, animation and moving systems.</div>
-                <span class="disciplines-face-link-label">VIEW PROJECT ↗</span>
-              </div>
-            </div>
-          </a>
-          <a class="disciplines-link disciplines-face disciplines-back disciplines-main-face" href="relay/index.html" aria-label="Open Web project" draggable="false">
-            <div class="disciplines-face-content">
-              <div class="disciplines-face-title"><span class="disciplines-face-number">03</span>WEB</div>
-              <div class="disciplines-face-copy">
-                <div class="disciplines-face-description">Digital experiences, interfaces and interaction.</div>
-                <span class="disciplines-face-link-label">VIEW PROJECT ↗</span>
-              </div>
-            </div>
-          </a>
-          <a class="disciplines-link disciplines-face disciplines-bottom disciplines-main-face" href="aerium/index.html" aria-label="Open AI project" draggable="false">
-            <div class="disciplines-face-content">
-              <div class="disciplines-face-title"><span class="disciplines-face-number">04</span>AI</div>
-              <div class="disciplines-face-copy">
-                <div class="disciplines-face-description">Creative AI, experiments and visual systems.</div>
-                <span class="disciplines-face-link-label">VIEW PROJECT ↗</span>
-              </div>
-            </div>
-          </a>
-          <div class="disciplines-face disciplines-left" aria-hidden="true"></div>
-          <div class="disciplines-face disciplines-right" aria-hidden="true"></div>
-        </div>
-      </div>
+  <head>
+    <meta charset="utf-8" />
+    <script>
+      document.documentElement.classList.add("js", "loading-active");
+      history.scrollRestoration = "manual";
+    </script>
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="theme-color" content="#080808" />
+    <title>Mike — Creative Designer</title>
+    <meta
+      name="description"
+      content="Graphic, motion, UI/UX and web design by Mike."
+    />
+    <link rel="stylesheet" href="css/home.css" />
+    <script type="module" src="js/app.js"></script>
+  </head>
+  <body>
+    <div class="loading" id="loading" aria-hidden="true">
+      <span id="loading-count">0%</span>
     </div>
 
-    <div class="disciplines-meta">
-      <div class="disciplines-drag-label">DRAG / ROTATE</div>
-      <div class="disciplines-counter" aria-live="polite">01 / 04</div>
-      <div class="disciplines-focus">
-        <div class="disciplines-focus-label">FOCUS</div>
-        <div class="disciplines-focus-copy">Brand systems · Art direction · Identity</div>
-      </div>
-    </div>
-  </section>
-</main>
+    <header class="site-nav">
+      <a class="nav-mark" href="#top" aria-label="Home"
+        ><span class="ma-m">M</span><span class="ma-a">A</span></a
+      >
+      <nav class="desktop-nav" aria-label="Primary">
+        <a class="scramble-link" href="#work" data-label="WORK">WORK</a>
+        <a class="scramble-link" href="#about" data-label="ABOUT">ABOUT</a>
+        <a class="scramble-link" href="cv/index.html" data-label="CV">CV</a>
+        <a
+          class="scramble-link"
+          href="https://gr.linkedin.com/in/michail-androulakis-525161168"
+          target="_blank"
+          rel="noreferrer"
+          data-label="CONTACT"
+          >CONTACT</a
+        >
+      </nav>
+      <button
+        id="menu-open"
+        type="button"
+        aria-label="Open menu"
+        aria-expanded="false"
+        aria-controls="menu"
+      >
+        <span></span><span></span>
+      </button>
+    </header>
 
-<span class="sound-hint" id="sound-hint" aria-hidden="true">TAP FOR SOUND</span>
-<button class="sound-toggle" id="sound-toggle" type="button" aria-label="Toggle ambient sound" aria-pressed="true">SOUND ON</button>
-<div class="cursor-ring" id="cursor-ring" aria-hidden="true"></div>
-<div class="cursor-dot" id="cursor-dot" aria-hidden="true"></div>
-</body>
+    <dialog id="menu">
+      <a class="menu-mark nav-mark" href="#top" aria-label="Home"
+        ><span class="ma-m">M</span><span class="ma-a">A</span></a
+      >
+      <button id="menu-close" type="button" aria-label="Close menu">
+        <span></span><span></span>
+      </button>
+      <nav aria-label="Mobile primary">
+        <a href="#work">Work</a>
+        <a href="#about">About</a>
+        <a href="cv/index.html">CV</a>
+        <a
+          href="https://gr.linkedin.com/in/michail-androulakis-525161168"
+          target="_blank"
+          rel="noreferrer"
+          >Contact</a
+        >
+      </nav>
+    </dialog>
+
+    <main id="top">
+      <section
+        class="scroll-stage"
+        id="scroll-stage"
+        aria-label="Creative Designer introduction"
+      >
+        <section class="home-hero" id="hero">
+          <canvas class="particles" id="particles" aria-hidden="true"></canvas>
+
+          <div class="bio-copy" id="bio-copy" aria-hidden="true">
+            <p
+              class="bio-text"
+              data-bio="I’m Mike, a creative designer working across identity, digital, motion and web."
+            >I’m Mike, a creative designer working across identity, digital, motion and web.</p>
+            <p
+              class="bio-text bio-text-secondary"
+              data-bio="I build visual systems and interactive experiences where concept, movement and technology meet."
+            >I build visual systems and interactive experiences where concept, movement and technology meet.</p>
+          </div>
+
+          <div class="mouse-glow" id="mouse-glow" aria-hidden="true"></div>
+
+          <div class="hero-center" id="hero-center">
+            <div class="type-lockup" aria-label="Creative Designer">
+              <div class="word first" id="creative" data-word="CREATIVE"></div>
+              <div class="word second" id="designer" data-word="DESIGNER"></div>
+            </div>
+            <div class="hero-note" aria-label="Creative disciplines">
+              <span class="hero-note-item">GRAPHIC</span>
+              <span aria-hidden="true">·</span>
+              <span class="hero-note-item">MOTION</span>
+              <span aria-hidden="true">·</span>
+              <span class="hero-note-item">UI/UX</span>
+              <span aria-hidden="true">·</span>
+              <span class="hero-note-item">WEB</span>
+            </div>
+          </div>
+        </section>
+      </section>
+
+      <section
+        class="work-section disciplines-section"
+        id="work"
+        aria-label="Disciplines"
+      >
+        <div class="disciplines-backgrounds" aria-hidden="true">
+          <div
+            class="disciplines-bg-image is-active"
+            data-index="0"
+            style="background-image: url(&quot;graphic-bg.webp&quot;)"
+          ></div>
+          <div
+            class="disciplines-bg-image"
+            data-index="1"
+            style="background-image: url(&quot;motion-bg.webp&quot;)"
+          ></div>
+          <div
+            class="disciplines-bg-image"
+            data-index="2"
+            style="background-image: url(&quot;web-bg.webp&quot;)"
+          ></div>
+          <div
+            class="disciplines-bg-image"
+            data-index="3"
+            style="background-image: url(&quot;ai-bg.webp&quot;)"
+          ></div>
+        </div>
+        <div class="disciplines-work-label">02 / WORK</div>
+
+        <div class="disciplines-visual-stack">
+          <div class="disciplines-type-stage" aria-hidden="true">
+            <div class="disciplines-giant-word">
+              <span class="disciplines-word-layer is-active" data-index="0"
+                ><span class="disciplines-letter">G</span
+                ><span class="disciplines-letter">R</span
+                ><span class="disciplines-letter">A</span
+                ><span class="disciplines-letter">P</span
+                ><span class="disciplines-letter">H</span
+                ><span class="disciplines-letter">I</span
+                ><span class="disciplines-letter">C</span></span
+              >
+              <span class="disciplines-word-layer" data-index="1"
+                ><span class="disciplines-letter">M</span
+                ><span class="disciplines-letter">O</span
+                ><span class="disciplines-letter">T</span
+                ><span class="disciplines-letter">I</span
+                ><span class="disciplines-letter">O</span
+                ><span class="disciplines-letter">N</span></span
+              >
+              <span class="disciplines-word-layer" data-index="2"
+                ><span class="disciplines-letter">W</span
+                ><span class="disciplines-letter">E</span
+                ><span class="disciplines-letter">B</span></span
+              >
+              <span class="disciplines-word-layer" data-index="3"
+                ><span class="disciplines-letter">A</span
+                ><span class="disciplines-letter">I</span></span
+              >
+            </div>
+          </div>
+
+          <div class="disciplines-cube-scene" aria-label="Disciplines overview">
+            <div class="disciplines-cube">
+              <div
+                class="disciplines-link disciplines-face disciplines-front disciplines-main-face"
+              >
+                <div class="disciplines-face-content">
+                  <div class="disciplines-face-title">
+                    <span class="disciplines-face-number">01</span
+                    ><span class="disciplines-face-word">GRAPHIC</span>
+                  </div>
+                  <div class="disciplines-face-copy">
+                    <div class="disciplines-face-description">
+                      Identity systems and visual direction.
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div
+                class="disciplines-link disciplines-face disciplines-top disciplines-main-face"
+              >
+                <div class="disciplines-face-content">
+                  <div class="disciplines-face-title">
+                    <span class="disciplines-face-number">02</span
+                    ><span class="disciplines-face-word">MOTION</span>
+                  </div>
+                  <div class="disciplines-face-copy">
+                    <div class="disciplines-face-description">
+                      Motion design, animation and moving systems.
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div
+                class="disciplines-link disciplines-face disciplines-back disciplines-main-face"
+              >
+                <div class="disciplines-face-content">
+                  <div class="disciplines-face-title">
+                    <span class="disciplines-face-number">03</span
+                    ><span class="disciplines-face-word">WEB</span>
+                  </div>
+                  <div class="disciplines-face-copy">
+                    <div class="disciplines-face-description">
+                      Digital experiences, interfaces and interaction.
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div
+                class="disciplines-link disciplines-face disciplines-bottom disciplines-main-face"
+              >
+                <div class="disciplines-face-content">
+                  <div class="disciplines-face-title">
+                    <span class="disciplines-face-number">04</span
+                    ><span class="disciplines-face-word">AI</span>
+                  </div>
+                  <div class="disciplines-face-copy">
+                    <div class="disciplines-face-description">
+                      Creative AI, experiments and visual systems.
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div
+                class="disciplines-face disciplines-left"
+                aria-hidden="true"
+              ></div>
+              <div
+                class="disciplines-face disciplines-right"
+                aria-hidden="true"
+              ></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="disciplines-meta">
+          <div class="disciplines-drag-label">SCROLL / ROTATE</div>
+          <div class="disciplines-counter" aria-live="polite">01 / 04</div>
+          <div class="disciplines-focus">
+            <div class="disciplines-focus-label">FOCUS</div>
+            <div class="disciplines-focus-copy">
+              Brand systems · Art direction · Identity
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <span class="sound-hint" id="sound-hint" aria-hidden="true"
+      >TAP FOR SOUND</span
+    >
+    <button
+      class="sound-toggle"
+      id="sound-toggle"
+      type="button"
+      aria-label="Toggle ambient sound"
+      aria-pressed="true"
+    >
+      SOUND ON
+    </button>
+    <div class="cursor-ring" id="cursor-ring" aria-hidden="true"></div>
+    <div class="cursor-dot" id="cursor-dot" aria-hidden="true"></div>
+  </body>
 </html>
