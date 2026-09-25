@@ -4,12 +4,13 @@ const MORPH_START = 0.30;
 const MORPH_END = 0.72;
 const CAMERA_Z = 8;
 const CAMERA_FOV = 44;
-const LAYERS = [
-  { z: 0.06, idleXY: 0.55, idleZ: 0.07, openXY: 12, openZ: 0.27, size: 6.2, alpha: 0.98 },
-  { z: 0.25, idleXY: 1.0, idleZ: 0.16, openXY: 18, openZ: 0.46, size: 3.3, alpha: 0.25 },
-  { z: 0.6, idleXY: 1.5, idleZ: 0.29, openXY: 25, openZ: 0.7, size: 2.4, alpha: 0.12 },
-  { z: 0.85, idleXY: 2.4, idleZ: 0.22, openXY: 0, openZ: 0, size: 1.0, alpha: 0.04 },
-];
+const BIO_STYLES = {
+  front: { size: 2.05, alpha: 0.84, xyMotion: 0.10, zMotion: 0.045, mouseXY: 0.35, mouseZ: 0.42 },
+  side: { size: 1.65, alpha: 0.43, xyMotion: 0.22, zMotion: 0.12, mouseXY: 0.55, mouseZ: 0.85 },
+  back: { size: 1.38, alpha: 0.23, xyMotion: 0.30, zMotion: 0.18, mouseXY: 0.65, mouseZ: 1.05 },
+  volume: { size: 1.45, alpha: 0.31, xyMotion: 0.25, zMotion: 0.16, mouseXY: 0.55, mouseZ: 0.92 },
+  atmosphere: { size: 0.85, alpha: 0.035, xyMotion: 0.65, zMotion: 0.35, mouseXY: 0.15, mouseZ: 0.18 }
+};
 const VERTEX_SHADER = [
   "attribute float aSize;",
   "attribute float aAlpha;",
@@ -49,23 +50,51 @@ export function initParticles(scrollScene, preferences) {
     return;
   }
   bioCopy.classList.add("bio-particles-pending");
-  const fallback = (error) => {
+  const handleWebGLFailure = (error) => {
     console.error("HERO/BIO WebGL particles unavailable:", error);
     canvas.hidden = true;
     bioCopy.classList.remove("bio-particles-pending", "bio-particles-active");
   };
   import("./vendor/three.module.min.js")
     .then((THREE) => {
-      try {
-        startWebGLParticles(THREE, scrollScene, preferences, canvas, bioCopy, fallback);
-      } catch (error) {
-        fallback(error);
-      }
+      return Promise.all([
+        import("./vendor/addons/loaders/FontLoader.js"),
+        import("./vendor/addons/geometries/TextGeometry.js"),
+        import("./vendor/addons/math/MeshSurfaceSampler.js")
+      ]).then(([fontModule, geometryModule, samplerModule]) =>
+        startWebGLParticles(
+          THREE,
+          fontModule.FontLoader,
+          geometryModule.TextGeometry,
+          samplerModule.MeshSurfaceSampler,
+          scrollScene,
+          preferences,
+          canvas,
+          bioCopy,
+          handleWebGLFailure
+        )
+      );
     })
-    .catch(fallback);
+    .catch((error) => {
+      console.error("BIO TextGeometry initialization failed:", error);
+      throw error;
+    });
 }
 
-function startWebGLParticles(THREE, scrollScene, preferences, canvas, bioCopy, fallback) {
+async function startWebGLParticles(
+  THREE,
+  FontLoader,
+  TextGeometry,
+  MeshSurfaceSampler,
+  scrollScene,
+  preferences,
+  canvas,
+  bioCopy,
+  handleWebGLFailure
+) {
+  const bioFont = await new FontLoader().loadAsync(
+    new URL("../assets/fonts/bio-bold.typeface.json", import.meta.url).href
+  );
   const renderer = new THREE.WebGLRenderer({
     canvas, alpha: true, antialias: false, powerPreference: "high-performance",
   });
@@ -75,7 +104,7 @@ function startWebGLParticles(THREE, scrollScene, preferences, canvas, bioCopy, f
   camera.position.z = CAMERA_Z;
   const mobile = innerWidth < 700;
   const count = mobile ? 3500 : 10000;
-  const textCount = Math.floor(count * 0.88);
+  const bioTypographyCount = Math.floor(count * (mobile ? 0.62 : 0.60));
   const particles = Array.from({ length: count }, () => {
     const theta = random(0, Math.PI * 2);
     const u = random(-1, 1);
@@ -84,19 +113,101 @@ function startWebGLParticles(THREE, scrollScene, preferences, canvas, bioCopy, f
     const seedX = Math.cos(theta) * radial * shell;
     const seedY = u * shell * 0.9;
     const seedZ = Math.sin(theta) * radial * shell;
+
+    const sizeRoll = Math.random();
+
+    let heroSize;
+    let heroAlpha;
+
+    /*
+     * 66% tiny distant particles
+     * 26% medium particles
+     * 8% larger foreground accents
+     */
+    if (sizeRoll < 0.66) {
+      heroSize = random(0.55, 1.05);
+      heroAlpha = random(0.012, 0.045);
+    } else if (sizeRoll < 0.92) {
+      heroSize = random(1.15, 2.15);
+      heroAlpha = random(0.055, 0.12);
+    } else {
+      heroSize = random(2.6, 4.4);
+      heroAlpha = random(0.12, 0.24);
+    }
+
+    /*
+     * Positive Z is slightly closer to the camera.
+     * Use that to strengthen foreground depth.
+     */
+    const depthNormalized = clamp(
+      (seedZ + 1.2) / 2.4
+    );
+
+    heroSize *= lerp(
+      0.82,
+      1.18,
+      depthNormalized
+    );
+
+    heroAlpha *= lerp(
+      0.70,
+      1.22,
+      depthNormalized
+    );
+
+    const strongAccent =
+      Math.random() < 0.035;
+
+    if (strongAccent) {
+      heroAlpha *= random(1.25, 1.55);
+    }
+
+    heroAlpha =
+      Math.min(
+        heroAlpha,
+        0.30
+      );
+
+    const isOrange =
+      Math.random() < 0.08;
+
+    const heroColor = isOrange
+      ? [241 / 255, 91 / 255, 50 / 255]
+      : [245 / 255, 245 / 255, 238 / 255];
+
     return {
       seedX, seedY, seedZ,
       heroX: 0, heroY: 0, heroZ: seedZ * 1.8,
       bioX: 0, bioY: 0, bioZ: 0,
       x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0,
       openX: 0, openY: 0, openZ: 0,
-      size: random(1.1, 2.0),
-      alpha: random(0.035, 0.09),
-      color: Math.random() < 0.02 ? [241 / 255, 91 / 255, 50 / 255] : [245 / 255, 245 / 255, 238 / 255],
+      size: heroSize,
+      alpha: heroAlpha,
+      color: heroColor,
       phase: random(0, Math.PI * 2),
-      layer: 3, hasBioTarget: false,
-      morphStart: 0, morphEnd: 1,
-      arcX: random(-0.38, 0.38), arcZ: random(-0.4, 0.4),
+      driftAmp: random(0.012, 0.038),
+      driftSpeed: random(0.82, 1.18),
+      parallaxStrength: random(0.82, 1.18),
+      bioPhase:
+        random(0, Math.PI * 2),
+      bioSpeed:
+        random(0.75, 1.25),
+      bioDepthSpeed:
+        random(0.72, 1.18),
+      bioType: "atmosphere",
+      bioBaseSize: BIO_STYLES.atmosphere.size,
+      bioBaseAlpha: BIO_STYLES.atmosphere.alpha,
+      hasBioTarget: false,
+      morphStart: 0,
+      morphEnd: 1,
+      arcX:
+        random(-0.32, 0.32) +
+        seedX * 0.08,
+      arcY:
+        random(-0.26, 0.26) +
+        seedY * 0.07,
+      arcZ:
+        random(-0.42, 0.42),
     };
   });
   const positions = new Float32Array(count * 3);
@@ -126,14 +237,29 @@ function startWebGLParticles(THREE, scrollScene, preferences, canvas, bioCopy, f
 
   let width = 1;
   let height = 1;
+  let heroScaleX = 1;
+  let heroScaleY = 1;
+  let heroScaleZ = 1;
   let progress = 0;
   let frame = 0;
   let lastTimestamp = 0;
   let mouseX = innerWidth * 0.5;
   let mouseY = innerHeight * 0.5;
+  let mouseParallaxX = 0;
+  let mouseParallaxY = 0;
+  let smoothedPointerVelocityX = 0;
+  let smoothedPointerVelocityY = 0;
+  let previousParallaxTargetX = 0;
+  let previousParallaxTargetY = 0;
   let pointerActive = false;
   let stopped = false;
   let hasTextTargets = false;
+  let bioMinZ = -1.6;
+  let bioMaxZ = 1.6;
+  let bioYaw = 0;
+  let bioPitch = 0;
+  let bioRebuildTimer = 0;
+  let bioDebugLogged = false;
   const worldHeightAt = (z) => 2 * Math.tan((CAMERA_FOV * Math.PI) / 360) * (CAMERA_Z - z);
   const pixelWorld = (pixels, z = 0) => pixels * worldHeightAt(z) / height;
   const screenToWorld = (screenX, screenY, z) => ({
@@ -152,177 +278,728 @@ function startWebGLParticles(THREE, scrollScene, preferences, canvas, bioCopy, f
     camera.updateProjectionMatrix();
     const halfHeight = worldHeightAt(0) * 0.5;
     const halfWidth = halfHeight * camera.aspect;
+    /*
+     * HERO envelope.
+     *
+     * X deliberately extends beyond both viewport edges.
+     * The center remains exactly at world X = 0.
+     */
+    heroScaleX =
+      halfWidth *
+      (mobile ? 1.58 : 1.88);
+
+    heroScaleY =
+      halfHeight *
+      (mobile ? 1.34 : 1.52);
+
+    heroScaleZ =
+      mobile ? 1.5 : 2.05;
+
     particles.forEach((particle) => {
-      particle.heroX = particle.seedX * halfWidth * 1.38;
-      particle.heroY = particle.seedY * halfHeight * 1.28;
-      particle.heroZ = particle.seedZ * (mobile ? 1.35 : 1.8);
-      const upper = clamp((particle.seedY + 1) * 0.5);
-      particle.morphStart = 0.02 + (1 - upper) * 0.16 + random(0, 0.04);
-      particle.morphEnd = Math.min(1, particle.morphStart + random(0.72, 0.8));
+      particle.heroX =
+        particle.seedX *
+        heroScaleX;
+
+      particle.heroY =
+        particle.seedY *
+        heroScaleY;
+
+      particle.heroZ =
+        particle.seedZ *
+        heroScaleZ;
+      const radialDistance =
+        clamp(
+          Math.sqrt(
+            particle.seedX * particle.seedX +
+            particle.seedY * particle.seedY
+          ) / 1.25
+        );
+
+      particle.morphStart =
+        0.02 +
+        radialDistance * 0.10 +
+        random(0, 0.065);
+
+      particle.morphEnd =
+        Math.min(
+          1,
+          particle.morphStart +
+          random(0.68, 0.82)
+        );
     });
   }
 
   function textTargets() {
     const primary = bioCopy.querySelector(".bio-text-primary");
-    if (!primary) return [];
+    if (!primary || width < 20 || height < 20) return [];
     const rect = primary.getBoundingClientRect();
-    if (rect.width < 20 || rect.height < 20) return [];
-    // Offscreen Canvas 2D is used solely as a filled-glyph sampling mask.
-    const scale = 2;
-    const mask = document.createElement("canvas");
-    mask.width = Math.ceil(rect.width * scale);
-    mask.height = Math.ceil(rect.height * scale);
-    const context = mask.getContext("2d", { willReadFrequently: true });
-    if (!context) return [];
-    context.scale(scale, scale);
-    context.fillStyle = "#fff";
-    context.textAlign = "center";
-    context.textBaseline = "middle";
-    const computed = getComputedStyle(primary);
-    const words = (primary.dataset.bio || primary.textContent || "").trim().split(/\s+/);
-    let fontSize = mobile ? clamp(width * 0.084, 32, 56) : clamp(width * 0.06, 58, 94);
-    let lines = [];
-    let lineHeight = 0;
-    for (let attempt = 0; attempt < 12; attempt += 1) {
-      context.font = "800 " + fontSize + "px " + computed.fontFamily;
-      if ("letterSpacing" in context) context.letterSpacing = (-0.05 * fontSize) + "px";
-      lines = [];
-      let line = "";
-      words.forEach((word) => {
-        const candidate = line ? line + " " + word : word;
-        if (line && context.measureText(candidate).width > rect.width * 0.98) {
-          lines.push(line);
-          line = word;
-        } else {
-          line = candidate;
-        }
-      });
-      if (line) lines.push(line);
-      lineHeight = fontSize * 0.95;
-      if (lines.length * lineHeight <= rect.height || fontSize <= 28) break;
-      fontSize *= 0.96;
-    }
-    const offsetY = (rect.height - lines.length * lineHeight) * 0.5;
-    lines.forEach((line, index) => {
-      context.fillText(line, rect.width * 0.5, offsetY + (index + 0.5) * lineHeight);
-    });
-    const alpha = context.getImageData(0, 0, mask.width, mask.height).data;
-    const filledAt = (x, y) => {
-      const px = Math.floor(x * scale);
-      const py = Math.floor(y * scale);
-      return px >= 0 && py >= 0 && px < mask.width && py < mask.height
-        && alpha[(py * mask.width + px) * 4 + 3] > 100;
-    };
-    let filledArea = 0;
-    for (let y = 0; y < mask.height; y += 2) {
-      for (let x = 0; x < mask.width; x += 2) {
-        if (alpha[(y * mask.width + x) * 4 + 3] > 100) filledArea += 1;
-      }
-    }
-    if (filledArea < 100) return [];
-    const sampleLayer = (desiredCount) => {
-      const spacing = Math.max(2.2, Math.sqrt(filledArea / desiredCount) * 0.98);
-      const samples = [];
-      let row = 0;
-      for (let y = 0; y < rect.height; y += spacing, row += 1) {
-        const stagger = (row % 2) * spacing * 0.5;
-        for (let x = -spacing; x < rect.width; x += spacing) {
-          const sx = x + stagger + random(0.08, 0.92) * spacing;
-          const sy = y + random(0.08, 0.92) * spacing;
-          if (filledAt(sx, sy)) samples.push({ x: rect.left + sx, y: rect.top + sy });
-        }
-      }
-      for (let tries = 0; samples.length < desiredCount && tries < desiredCount * 80; tries += 1) {
-        const sx = random(0, rect.width);
-        const sy = random(0, rect.height);
-        if (filledAt(sx, sy)) samples.push({ x: rect.left + sx, y: rect.top + sy });
-      }
-      for (let index = samples.length - 1; index > 0; index -= 1) {
-        const swap = Math.floor(Math.random() * (index + 1));
-        [samples[index], samples[swap]] = [samples[swap], samples[index]];
-      }
-      return samples.slice(0, desiredCount);
-    };
-    const frontCount = Math.floor(textCount * 0.7);
-    const midCount = Math.floor(textCount * 0.2);
-    return [
-      ...sampleLayer(frontCount),
-      ...sampleLayer(midCount),
-      ...sampleLayer(textCount - frontCount - midCount),
-    ];
-  }
+    const sourceText = primary.dataset.bio || primary.textContent || "";
+    const apostrophe = sourceText.includes("’") ? "’" : "'";
+    let lines = mobile
+      ? [
+          "I" + apostrophe + "m Mike,",
+          "a creative designer",
+          "working across identity,",
+          "digital, motion and web."
+        ]
+      : [
+          "I" + apostrophe + "m Mike, a creative designer",
+          "working across identity,",
+          "digital, motion and web."
+        ];
+    const nameLead = sourceText.match(/^I[^\s]*\s+Mike,/)?.[0] || "I'm Mike,";
+    lines = mobile
+      ? [
+          nameLead,
+          "a creative designer",
+          "working across identity,",
+          "digital, motion and web."
+        ]
+      : [
+          nameLead + " a creative designer",
+          "working across identity,",
+          "digital, motion and web."
+        ];
 
+    const BIO_TEXT_DEPTH = 0.24;
+    const LINE_HEIGHT = mobile ? 1.08 : 1.12;
+    const totalLineSpan = (lines.length - 1) * LINE_HEIGHT;
+    const lineSamplers = [];
+    const samplingMaterial = new THREE.MeshBasicMaterial();
+    const completeBounds = {
+      minX: Infinity,
+      maxX: -Infinity,
+      minY: Infinity,
+      maxY: -Infinity,
+      minZ: Infinity,
+      maxZ: -Infinity
+    };
+    lines.forEach((lineText, index) => {
+      const geometry = new TextGeometry(lineText, {
+        font: bioFont,
+        size: 1,
+        depth: BIO_TEXT_DEPTH,
+        curveSegments: 6,
+        bevelEnabled: false
+      });
+      geometry.computeBoundingBox();
+      const box = geometry.boundingBox;
+      const lineWidth = box.max.x - box.min.x;
+      geometry.translate(
+        -box.min.x - lineWidth * 0.5,
+        totalLineSpan * 0.5 - index * LINE_HEIGHT,
+        -BIO_TEXT_DEPTH * 0.5
+      );
+      geometry.computeBoundingBox();
+      const mesh = new THREE.Mesh(geometry, samplingMaterial);
+      const sampler = new MeshSurfaceSampler(mesh).build();
+      const lineBox = geometry.boundingBox;
+      completeBounds.minX = Math.min(completeBounds.minX, lineBox.min.x);
+      completeBounds.maxX = Math.max(completeBounds.maxX, lineBox.max.x);
+      completeBounds.minY = Math.min(completeBounds.minY, lineBox.min.y);
+      completeBounds.maxY = Math.max(completeBounds.maxY, lineBox.max.y);
+      completeBounds.minZ = Math.min(completeBounds.minZ, lineBox.min.z);
+      completeBounds.maxZ = Math.max(completeBounds.maxZ, lineBox.max.z);
+      lineSamplers.push({
+        sampler,
+        geometry,
+        weight: Math.max(0.001,
+          (lineBox.max.x - lineBox.min.x) *
+          (lineBox.max.y - lineBox.min.y))
+      });
+    });
+
+    const typographyCount = bioTypographyCount;
+    const frontCount = Math.floor(typographyCount * 0.60);
+    const sideCount = Math.floor(typographyCount * 0.22);
+    const backCount = Math.floor(typographyCount * 0.10);
+    const volumeCount = typographyCount - frontCount - sideCount - backCount;
+    const samplePosition = new THREE.Vector3();
+    const sampleNormal = new THREE.Vector3();
+    const classifySurfaceNormal = (normal) =>
+      normal.z > 0.7 ? "front" : normal.z < -0.7 ? "back" : "side";
+    const pickWeightedLineSampler = () => {
+      const totalWeight = lineSamplers.reduce((sum, item) => sum + item.weight, 0);
+      let roll = Math.random() * totalWeight;
+      for (const item of lineSamplers) {
+        roll -= item.weight;
+        if (roll <= 0) return item;
+      }
+      return lineSamplers[lineSamplers.length - 1];
+    };
+    const sampleWantedSurface = (wantedType) => {
+      for (let attempt = 0; attempt < 120; attempt += 1) {
+        const source = pickWeightedLineSampler();
+        source.sampler.sample(samplePosition, sampleNormal);
+        if (classifySurfaceNormal(sampleNormal) === wantedType) {
+          return {
+            x: samplePosition.x,
+            y: samplePosition.y,
+            z: samplePosition.z,
+            type: wantedType
+          };
+        }
+      }
+      return null;
+    };
+
+    const rawTargets = [];
+    const frontTargets = [];
+    const frontSpacing = mobile ? 0.030 : 0.027;
+    const acceptedFront = new Map();
+    const acceptFront = (sample, spacing) => {
+      const gx = Math.floor(sample.x / spacing);
+      const gy = Math.floor(sample.y / spacing);
+      for (let ox = -1; ox <= 1; ox += 1) {
+        for (let oy = -1; oy <= 1; oy += 1) {
+          const bucket = acceptedFront.get((gx + ox) + ":" + (gy + oy));
+          if (bucket && bucket.some((point) =>
+            (sample.x - point.x) ** 2 + (sample.y - point.y) ** 2 < spacing ** 2)) {
+            return false;
+          }
+        }
+      }
+      const key = gx + ":" + gy;
+      if (!acceptedFront.has(key)) acceptedFront.set(key, []);
+      acceptedFront.get(key).push({ x: sample.x, y: sample.y });
+      return true;
+    };
+
+    let spacing = frontSpacing;
+    while (frontTargets.length < frontCount && spacing >= frontSpacing * 0.48) {
+      const candidate = sampleWantedSurface("front");
+      if (candidate && acceptFront(candidate, spacing)) {
+        frontTargets.push(candidate);
+      } else if (frontTargets.length < frontCount && Math.random() < 0.02) {
+        spacing *= 0.985;
+      }
+    }
+    while (frontTargets.length < frontCount) {
+      const candidate = sampleWantedSurface("front");
+      if (!candidate) throw new Error("BIO TextGeometry front sampling failed");
+      frontTargets.push(candidate);
+    }
+
+    const collectSurfaceTargets = (type, amount) => {
+      const result = [];
+      while (result.length < amount) {
+        const candidate = sampleWantedSurface(type);
+        if (!candidate) throw new Error("BIO TextGeometry " + type + " sampling failed");
+        result.push(candidate);
+      }
+      return result;
+    };
+    rawTargets.push(...frontTargets);
+    rawTargets.push(...collectSurfaceTargets("side", sideCount));
+    rawTargets.push(...collectSurfaceTargets("back", backCount));
+    for (let index = 0; index < volumeCount; index += 1) {
+      const source = frontTargets[Math.floor(Math.random() * frontTargets.length)];
+      rawTargets.push({
+        x: source.x + random(-0.008, 0.008),
+        y: source.y + random(-0.008, 0.008),
+        z: random(-BIO_TEXT_DEPTH * 0.40, BIO_TEXT_DEPTH * 0.40),
+        type: "volume"
+      });
+    }
+
+    const rawMinX = completeBounds.minX;
+    const rawMaxX = completeBounds.maxX;
+    const rawMinY = completeBounds.minY;
+    const rawMaxY = completeBounds.maxY;
+    const rawMinZ = completeBounds.minZ;
+    const rawMaxZ = completeBounds.maxZ;
+    const rawWidth = Math.max(0.001, rawMaxX - rawMinX);
+    const rawCenterX = (rawMinX + rawMaxX) * 0.5;
+    const rawCenterY = (rawMinY + rawMaxY) * 0.5;
+    const rawCenterZ = (rawMinZ + rawMaxZ) * 0.5;
+    const desiredPixelWidth = mobile ? width * 0.84 : Math.min(width * 0.68, 1080);
+    const desiredWorldWidth = Math.abs(
+      screenToWorld(width * 0.5 + desiredPixelWidth * 0.5, height * 0.5, 0).x -
+      screenToWorld(width * 0.5 - desiredPixelWidth * 0.5, height * 0.5, 0).x
+    );
+    const geometryScale = desiredWorldWidth / rawWidth;
+    const depthBoost = mobile ? 1.55 : 2.10;
+    const bioVerticalOffset = pixelWorld(height * 0.05);
+    const toWorldTarget = (target) => ({
+      x: (target.x - rawCenterX) * geometryScale,
+      y: (target.y - rawCenterY) * geometryScale + bioVerticalOffset,
+      z: (target.z - rawCenterZ) * geometryScale * depthBoost,
+      type: target.type
+    });
+    const targets = rawTargets.map(toWorldTarget);
+    const typographyHeight = Math.max(0.001, rawMaxY - rawMinY) * geometryScale;
+    const typographyWidth = desiredWorldWidth;
+    if (!bioDebugLogged) {
+      console.table({
+        lines: lines.length,
+        rawWidth,
+        rawHeight: rawMaxY - rawMinY,
+        desiredPixelWidth,
+        desiredWorldWidth,
+        geometryScale,
+        finalApproxWidth: rawWidth * geometryScale,
+        finalApproxHeight: (rawMaxY - rawMinY) * geometryScale,
+        rawZDepth: rawMaxZ - rawMinZ,
+        finalZDepth: (rawMaxZ - rawMinZ) * geometryScale * depthBoost
+      });
+      lines.forEach((lineText, index) => console.log("[BIO line]", index, lineText));
+      bioDebugLogged = true;
+    }
+    const atmosphereCount = count - typographyCount;
+    for (let index = 0; index < atmosphereCount; index += 1) {
+      targets.push({
+        x: random(-typographyWidth * 0.62, typographyWidth * 0.62),
+        y: random(-typographyHeight * 1.05, typographyHeight * 1.05),
+        z: random(-1.6, 1.6),
+        type: "atmosphere"
+      });
+    }
+    for (let index = targets.length - 1; index > 0; index -= 1) {
+      const swapIndex = Math.floor(Math.random() * (index + 1));
+      [targets[index], targets[swapIndex]] = [targets[swapIndex], targets[index]];
+    }
+    lineSamplers.forEach((entry) => entry.geometry.dispose());
+    samplingMaterial.dispose();
+    return targets;
+  }
   function assignBioTargets() {
     const targets = textTargets();
-    if (targets.length < (mobile ? 450 : 1400)) {
+    if (targets.length !== count) {
       hasTextTargets = false;
       bioCopy.classList.remove("bio-particles-pending", "bio-particles-active");
       return;
     }
-    const frontEnd = Math.floor(targets.length * 0.7);
-    const midEnd = Math.floor(targets.length * 0.9);
+    bioMinZ = Math.min(...targets.map((target) => target.z));
+    bioMaxZ = Math.max(...targets.map((target) => target.z));
     particles.forEach((particle, index) => {
-      const layer = index < frontEnd ? 0 : index < midEnd ? 1 : index < targets.length ? 2 : 3;
-      const settings = LAYERS[layer];
-      const target = targets[index] || targets[Math.floor(Math.random() * targets.length)];
-      particle.layer = layer;
+      const target = targets[index];
+      particle.bioType = target.type;
       particle.hasBioTarget = true;
-      particle.bioZ = random(-settings.z, settings.z);
-      const world = screenToWorld(target.x, target.y, particle.bioZ);
-      particle.bioX = world.x + (layer === 3 ? random(-0.34, 0.34) : 0);
-      particle.bioY = world.y + (layer === 3 ? random(-0.25, 0.25) : 0);
+      particle.bioX = target.x;
+      particle.bioY = target.y;
+      particle.bioZ = target.z;
+      particle.bioBaseSize = target.type === "front"
+        ? (Math.random() < 0.06 ? random(2.15, 2.45) : random(1.55, 2.15))
+        : target.type === "side"
+          ? random(1.25, 1.85)
+          : target.type === "back"
+            ? random(1.0, 1.55)
+            : target.type === "volume"
+              ? random(1.10, 1.70)
+              : random(0.45, 1.0);
+      particle.bioBaseAlpha = target.type === "front"
+        ? random(0.72, 0.94)
+        : target.type === "side"
+          ? random(0.30, 0.55)
+          : target.type === "back"
+            ? random(0.12, 0.28)
+            : target.type === "volume"
+              ? random(0.20, 0.42)
+              : (Math.random() < 0.025 ? random(0.05, 0.09) : random(0.008, 0.045));
     });
     hasTextTargets = true;
     bioCopy.classList.remove("bio-particles-pending");
     bioCopy.classList.add("bio-particles-active");
   }
-
   function draw(timestamp) {
     frame = 0;
     if (stopped || document.hidden) return;
     const delta = lastTimestamp ? clamp((timestamp - lastTimestamp) / 16.67, 0.5, 2.5) : 1;
     lastTimestamp = timestamp;
     const morph = smoothstep(clamp((progress - MORPH_START) / (MORPH_END - MORPH_START)));
-    const angle = Math.sin(timestamp * 0.00012) * 0.18;
-    const cosAngle = Math.cos(angle);
-    const sinAngle = Math.sin(angle);
-    const pointerX = preferences.finePointer.matches ? ((mouseX / width) - 0.5) * pixelWorld(92) : 0;
-    const pointerY = preferences.finePointer.matches ? (0.5 - mouseY / height) * pixelWorld(38) : 0;
+    /*
+     * Continuous planetary rotation.
+     *
+     * 0.000045 rad/ms gives roughly one complete
+     * rotation every ~140 seconds.
+     */
+    const rotationY =
+      timestamp * 0.000036;
+
+    /*
+     * Small axial tilt / breathing.
+     * This prevents the cloud from feeling like
+     * a perfectly flat horizontal spinner.
+     */
+    const tiltX =
+      -0.14 +
+      Math.sin(
+        timestamp * 0.000035
+      ) *
+      0.035;
+
+    const cosY = Math.cos(rotationY);
+    const sinY = Math.sin(rotationY);
+
+    const cosX = Math.cos(tiltX);
+    const sinX = Math.sin(tiltX);
+
+    const pointerNormX =
+      pointerActive &&
+      preferences.finePointer.matches
+        ? ((mouseX / width) - 0.5) * 2
+        : 0;
+
+    const pointerNormY =
+      pointerActive &&
+      preferences.finePointer.matches
+        ? ((mouseY / height) - 0.5) * 2
+        : 0;
+
+    /*
+     * Positive pointer X must produce
+     * positive particle X.
+     *
+     * cursor right -> particles right
+     * cursor left  -> particles left
+     */
+    const horizontalStrength =
+      pointerNormX >= 0
+        ? 0.105
+        : 0.088;
+
+    const targetParallaxX =
+      pointerNormX *
+      horizontalStrength;
+
+    const targetParallaxY =
+      -pointerNormY * 0.055;
+
+    const dt =
+      Math.max(
+        0.008,
+        Math.min(
+          0.05,
+          delta / 60
+        )
+      );
+
+    /*
+     * Measure how quickly the pointer target
+     * is moving.
+     */
+    const rawVelocityX =
+      (
+        targetParallaxX -
+        previousParallaxTargetX
+      ) / dt;
+
+    const rawVelocityY =
+      (
+        targetParallaxY -
+        previousParallaxTargetY
+      ) / dt;
+
+    previousParallaxTargetX =
+      targetParallaxX;
+
+    previousParallaxTargetY =
+      targetParallaxY;
+
+    /*
+     * Smooth pointer velocity heavily.
+     *
+     * This gives us inertia WITHOUT a spring.
+     */
+    const velocitySmoothing =
+      1 -
+      Math.exp(
+        -10 * dt
+      );
+
+    smoothedPointerVelocityX +=
+      (
+        rawVelocityX -
+        smoothedPointerVelocityX
+      ) *
+      velocitySmoothing;
+
+    smoothedPointerVelocityY +=
+      (
+        rawVelocityY -
+        smoothedPointerVelocityY
+      ) *
+      velocitySmoothing;
+
+    /*
+     * When the pointer slows down,
+     * velocity naturally fades.
+     */
+    const velocityDecay =
+      Math.exp(
+        -6.5 * dt
+      );
+
+    smoothedPointerVelocityX *=
+      velocityDecay;
+
+    smoothedPointerVelocityY *=
+      velocityDecay;
+
+    const inertiaX =
+      clamp(
+        smoothedPointerVelocityX * 0.0065,
+        -0.026,
+        0.026
+      );
+
+    const inertiaY =
+      clamp(
+        smoothedPointerVelocityY * 0.004,
+        -0.012,
+        0.012
+      );
+
+    const inertialTargetX =
+      targetParallaxX +
+      inertiaX;
+
+    const inertialTargetY =
+      targetParallaxY +
+      inertiaY;
+
+    const followSpeed =
+      7.2;
+
+    const followEase =
+      1 -
+      Math.exp(
+        -followSpeed * dt
+      );
+
+    mouseParallaxX +=
+      (
+        inertialTargetX -
+        mouseParallaxX
+      ) *
+      followEase;
+
+    mouseParallaxY +=
+      (
+        inertialTargetY -
+        mouseParallaxY
+      ) *
+      followEase;
+    const bioTiltEase = 1 - Math.exp(-3.2 * dt);
+    bioYaw += (pointerNormX * Math.PI / 120 - bioYaw) * bioTiltEase;
+    bioPitch += (-pointerNormY * Math.PI / 225 - bioPitch) * bioTiltEase;
+    const bioCosY = Math.cos(bioYaw);
+    const bioSinY = Math.sin(bioYaw);
+    const bioCosX = Math.cos(bioPitch);
+    const bioSinX = Math.sin(bioPitch);
     const worldPerPixel = pixelWorld(1);
     particles.forEach((particle, index) => {
-      const settings = LAYERS[particle.layer];
+      const settings = BIO_STYLES[particle.bioType];
       const local = particle.hasBioTarget
         ? smoothstep(clamp((morph - particle.morphStart) / (particle.morphEnd - particle.morphStart)))
         : 0;
       const settled = smoothstep(clamp((local - 0.82) / 0.18));
-      const rotatedX = particle.heroX * cosAngle - particle.heroZ * sinAngle;
-      const rotatedZ = particle.heroX * sinAngle + particle.heroZ * cosAngle;
-      const heroX = rotatedX + pointerX * (1 - local);
-      const heroY = particle.heroY + pointerY * (1 - local);
+      /*
+       * =================================================
+       * NORMALIZED 3D PLANET ROTATION
+       * =================================================
+       *
+       * IMPORTANT:
+       * rotate seed coordinates BEFORE viewport scaling.
+       */
+
+      const seedX =
+        particle.seedX;
+
+      const seedY =
+        particle.seedY;
+
+      const seedZ =
+        particle.seedZ;
+
+      /*
+       * Continuous rotation around Y.
+       */
+      const normalizedX1 =
+        seedX * cosY -
+        seedZ * sinY;
+
+      const normalizedZ1 =
+        seedX * sinY +
+        seedZ * cosY;
+
+      /*
+       * Subtle axial tilt around X.
+       */
+      const normalizedX2 =
+        normalizedX1;
+
+      const normalizedY2 =
+        seedY * cosX -
+        normalizedZ1 * sinX;
+
+      const normalizedZ2 =
+        seedY * sinX +
+        normalizedZ1 * cosX;
+
+      /*
+       * Depth value BEFORE viewport scaling.
+       *
+       * This is used only to vary mouse parallax.
+       */
+      const depth01 =
+        clamp(
+          (
+            normalizedZ2 +
+            1.25
+          ) /
+          2.5
+        );
+
+      /*
+       * Near particles respond more.
+       * Far particles respond less.
+       */
+      const depthResponse =
+        lerp(
+          0.24,
+          1.0,
+          depth01
+        ) *
+        particle.parallaxStrength;
+
+      /*
+       * HERO mouse interaction fades out
+       * as the particle enters BIO.
+       */
+      const heroInteraction =
+        (1 - local) *
+        depthResponse;
+
+      /*
+       * Far particles:
+       * slight opposite movement.
+       *
+       * Near particles:
+       * strong movement WITH cursor.
+       */
+      const depthParallax =
+        lerp(
+          -0.16,
+          1.0,
+          depth01
+        ) *
+        particle.parallaxStrength *
+        (1 - local);
+
+      const normalizedInteractiveX =
+        normalizedX2 +
+        mouseParallaxX *
+        depthParallax;
+
+      const normalizedInteractiveY =
+        normalizedY2 +
+        mouseParallaxY *
+        depthParallax *
+        0.72;
+
+      const normalizedInteractiveZ =
+        normalizedZ2;
+
+      /*
+       * =================================================
+       * ONLY NOW SCALE INTO VIEWPORT SPACE
+       * =================================================
+       */
+
+      const rotatedX =
+        normalizedInteractiveX *
+        heroScaleX;
+
+      const rotatedY =
+        normalizedInteractiveY *
+        heroScaleY;
+
+      const rotatedZ =
+        normalizedInteractiveZ *
+        heroScaleZ;
+
+      const driftTime =
+        timestamp *
+        0.00016 *
+        particle.driftSpeed;
+
+      const driftX =
+        Math.sin(
+          driftTime +
+          particle.phase
+        ) *
+        particle.driftAmp;
+
+      const driftY =
+        Math.cos(
+          driftTime * 0.82 +
+          particle.phase * 1.13
+        ) *
+        particle.driftAmp *
+        0.62;
+
+      const driftZ =
+        Math.sin(
+          driftTime * 0.67 +
+          particle.phase * 0.73
+        ) *
+        particle.driftAmp *
+        1.35;
+
+
+      const heroX =
+        rotatedX +
+        driftX;
+
+      const heroY =
+        rotatedY +
+        driftY;
+
+      const heroZ =
+        rotatedZ +
+        driftZ;
       const arc = Math.sin(local * Math.PI);
-      const idleX = Math.sin(timestamp * 0.00051 + particle.phase) * settings.idleXY * worldPerPixel * settled;
-      const idleY = Math.cos(timestamp * 0.00043 + particle.phase * 0.7) * settings.idleXY * 0.8 * worldPerPixel * settled;
-      const idleZ = (Math.sin(timestamp * 0.00067 + particle.phase * 1.3)
-        + Math.sin(timestamp * 0.00104 + particle.phase * 0.8) * 0.2) * settings.idleZ * settled;
+      const bioTime = timestamp * 0.001;
+      const idleX = Math.sin(bioTime * 0.16 * particle.bioSpeed + particle.bioPhase) *
+        settings.xyMotion * worldPerPixel * settled;
+      const idleY = Math.cos(bioTime * 0.14 * particle.bioSpeed + particle.bioPhase * 0.83) *
+        settings.xyMotion * 0.55 * worldPerPixel * settled;
+      const idleZ = (
+        Math.sin(bioTime * 0.31 * particle.bioDepthSpeed + particle.bioPhase) * settings.zMotion +
+        Math.sin(bioTime * 0.13 + particle.bioPhase * 1.37) * settings.zMotion * 0.28
+      ) * settled;
+      const orientedX = particle.bioX * bioCosY + particle.bioZ * bioSinY;
+      const yawZ = -particle.bioX * bioSinY + particle.bioZ * bioCosY;
+      const orientedY = particle.bioY * bioCosX - yawZ * bioSinX;
+      const orientedZ = particle.bioY * bioSinX + yawZ * bioCosX;
+
       const screenScale = height / worldHeightAt(particle.z);
       const dx = width * 0.5 + particle.x * screenScale - mouseX;
       const dy = height * 0.5 - particle.y * screenScale - mouseY;
       const distance = Math.hypot(dx, dy);
       const force = pointerActive && preferences.finePointer.matches && settled > 0
-        ? smoothstep(clamp(1 - distance / 155)) * settled
-        : 0;
-      const side = particle.bioZ < 0 ? -1 : 1;
-      particle.openX += ((dx / Math.max(distance, 1)) * settings.openXY * worldPerPixel * force - particle.openX) * 0.04;
-      particle.openY += ((-dy / Math.max(distance, 1)) * settings.openXY * worldPerPixel * force - particle.openY) * 0.04;
-      particle.openZ += (side * settings.openZ * force - particle.openZ) * 0.035;
-      // Keep the readable face anchored while Z breathes; let support layers show more parallax.
-      const faceStability = particle.layer === 0 ? 0.9 : particle.layer === 1 ? 0.3 : 0;
-      const depthShift = (idleZ + particle.openZ) / (CAMERA_Z - particle.bioZ);
-      const targetX = lerp(heroX, particle.bioX, local) + arc * particle.arcX + idleX + particle.openX
-        - particle.bioX * depthShift * faceStability * settled;
-      const targetY = lerp(heroY, particle.bioY, local) - arc * 0.3 + idleY + particle.openY
-        - particle.bioY * depthShift * faceStability * settled;
-      const targetZ = lerp(rotatedZ, particle.bioZ, local) + arc * particle.arcZ + idleZ + particle.openZ;
+        ? smoothstep(clamp(1 - distance / 155)) * settled : 0;
+      const normalizedDx = dx / Math.max(distance, 1);
+      const normalizedDy = -dy / Math.max(distance, 1);
+      const targetOpenX = normalizedDx * force * settings.mouseXY * worldPerPixel * 0.5;
+      const targetOpenY = normalizedDy * force * settings.mouseXY * worldPerPixel * 0.5;
+      const mouseDepthMultiplier = particle.bioType === "front" ? 0.45
+        : particle.bioType === "side" ? 0.90
+          : particle.bioType === "back" ? 1.10
+            : particle.bioType === "volume" ? 1.0 : 0.20;
+      const depthDirection = Math.sin(particle.bioPhase * 2.17) >= 0 ? 1 : -1;
+      const targetOpenZ = force * settings.mouseZ * mouseDepthMultiplier * depthDirection;
+      const openEase = 1 - Math.exp(-6 * dt);
+      particle.openX += (targetOpenX - particle.openX) * openEase;
+      particle.openY += (targetOpenY - particle.openY) * openEase;
+      particle.openZ += (targetOpenZ - particle.openZ) * openEase;
+      const targetX = lerp(heroX, orientedX, local) +
+        arc * particle.arcX + (idleX + particle.openX) * local;
+      const targetY = lerp(heroY, orientedY, local) +
+        arc * particle.arcY + (idleY + particle.openY) * local;
+      const targetZ = lerp(heroZ, orientedZ, local) +
+        arc * particle.arcZ + (idleZ + particle.openZ) * local;
       const spring = 0.068 * delta;
       const damping = Math.pow(0.79, delta);
       particle.vx = (particle.vx + (targetX - particle.x) * spring) * damping;
@@ -335,8 +1012,50 @@ function startWebGLParticles(THREE, scrollScene, preferences, canvas, bioCopy, f
       positions[offset] = particle.x;
       positions[offset + 1] = particle.y;
       positions[offset + 2] = particle.z;
-      sizes[index] = lerp(particle.size, settings.size * (mobile ? 0.76 : 1), local);
-      alphas[index] = lerp(particle.alpha, settings.alpha, local);
+      /*
+       * Positive Z = closer to camera.
+       */
+
+      const bioDepth01 = clamp((particle.z - bioMinZ) /
+        Math.max(0.001, bioMaxZ - bioMinZ));
+
+      /*
+       * Near particles become slightly larger.
+       * Far particles slightly smaller.
+       */
+
+      const depthSizeScale = lerp(0.78, 1.16, bioDepth01);
+
+      const baseBioSize = particle.bioBaseSize * (mobile ? 0.76 : 1);
+
+      sizes[index] =
+        lerp(
+          particle.size,
+          baseBioSize *
+            lerp(
+              1,
+              depthSizeScale,
+              settled
+            ),
+          local
+        );
+
+      const depthAlphaScale = lerp(0.70, 1.08, bioDepth01);
+
+      const bioAlpha =
+        particle.bioBaseAlpha *
+        lerp(
+          1,
+          depthAlphaScale,
+          settled
+        );
+
+      alphas[index] =
+        lerp(
+          particle.alpha,
+          bioAlpha,
+          local
+        );
     });
     positionAttribute.needsUpdate = true;
     sizeAttribute.needsUpdate = true;
@@ -361,7 +1080,10 @@ function startWebGLParticles(THREE, scrollScene, preferences, canvas, bioCopy, f
     colors[offset + 2] = particle.color[2];
   });
   const fontReady = document.fonts?.ready || Promise.resolve();
-  fontReady.then(assignBioTargets).catch(assignBioTargets);
+  fontReady.then(assignBioTargets).catch((error) => {
+    console.error("BIO TextGeometry initialization failed:", error);
+    throw error;
+  });
   scrollScene.subscribe((value) => {
     progress = value;
     canvas.style.opacity = String(1 - clamp((progress - 0.94) / 0.06));
@@ -377,18 +1099,20 @@ function startWebGLParticles(THREE, scrollScene, preferences, canvas, bioCopy, f
   }
   addEventListener("resize", () => {
     resize();
-    if (hasTextTargets) assignBioTargets();
+    clearTimeout(bioRebuildTimer);
+    bioRebuildTimer = setTimeout(assignBioTargets, 160);
   }, { passive: true });
   addEventListener("orientationchange", () => {
     resize();
-    if (hasTextTargets) assignBioTargets();
+    clearTimeout(bioRebuildTimer);
+    bioRebuildTimer = setTimeout(assignBioTargets, 160);
   }, { passive: true });
   document.addEventListener("visibilitychange", start);
   canvas.addEventListener("webglcontextlost", (event) => {
     event.preventDefault();
     stopped = true;
     if (frame) cancelAnimationFrame(frame);
-    fallback(new Error("WebGL context lost"));
+    handleWebGLFailure(new Error("WebGL context lost"));
   }, { passive: false });
   start();
 }
