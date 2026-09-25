@@ -5,11 +5,11 @@ const MORPH_END = 0.72;
 const CAMERA_Z = 8;
 const CAMERA_FOV = 44;
 const BIO_STYLES = {
-  front: { size: 2.05, alpha: 0.84, xyMotion: 0.10, zMotion: 0.045, mouseXY: 0.35, mouseZ: 0.42 },
-  side: { size: 1.65, alpha: 0.43, xyMotion: 0.22, zMotion: 0.12, mouseXY: 0.55, mouseZ: 0.85 },
-  back: { size: 1.38, alpha: 0.23, xyMotion: 0.30, zMotion: 0.18, mouseXY: 0.65, mouseZ: 1.05 },
-  volume: { size: 1.45, alpha: 0.31, xyMotion: 0.25, zMotion: 0.16, mouseXY: 0.55, mouseZ: 0.92 },
-  atmosphere: { size: 0.85, alpha: 0.035, xyMotion: 0.65, zMotion: 0.35, mouseXY: 0.15, mouseZ: 0.18 }
+  front: { size: 1.90, alpha: 0.91, xyMotion: 0.012, zMotion: 0.010, mouseXY: 0.20, mouseZ: 0.26 },
+  side: { size: 1.05, alpha: 0.10, xyMotion: 0.08, zMotion: 0.040, mouseXY: 0.38, mouseZ: 0.72 },
+  back: { size: 0.82, alpha: 0.035, xyMotion: 0.10, zMotion: 0.055, mouseXY: 0.42, mouseZ: 0.88 },
+  volume: { size: 0.95, alpha: 0.08, xyMotion: 0.09, zMotion: 0.050, mouseXY: 0.40, mouseZ: 0.78 },
+  atmosphere: { size: 0.58, alpha: 0.012, xyMotion: 0.48, zMotion: 0.22, mouseXY: 0.08, mouseZ: 0.12 }
 };
 const VERTEX_SHADER = [
   "attribute float aSize;",
@@ -104,7 +104,7 @@ async function startWebGLParticles(
   camera.position.z = CAMERA_Z;
   const mobile = innerWidth < 700;
   const count = mobile ? 3500 : 10000;
-  const bioTypographyCount = Math.floor(count * (mobile ? 0.62 : 0.60));
+  const bioTypographyCount = Math.floor(count * (mobile ? 0.84 : 0.88));
   const particles = Array.from({ length: count }, () => {
     const theta = random(0, Math.PI * 2);
     const u = random(-1, 1);
@@ -194,6 +194,14 @@ async function startWebGLParticles(
         random(0.75, 1.25),
       bioDepthSpeed:
         random(0.72, 1.18),
+      bioFloatPhase:
+        random(0, Math.PI * 2),
+      bioFloatSpeed:
+        random(0.78, 1.20),
+      bioDepthDirection:
+        Math.random() < 0.5 ? -1 : 1,
+      bioTextMotion:
+        Math.random(),
       bioType: "atmosphere",
       bioBaseSize: BIO_STYLES.atmosphere.size,
       bioBaseAlpha: BIO_STYLES.atmosphere.alpha,
@@ -233,7 +241,68 @@ async function startWebGLParticles(
   });
   const cloud = new THREE.Points(geometry, material);
   cloud.frustumCulled = false;
+  cloud.renderOrder = 1;
   scene.add(cloud);
+
+  const maxTrailSegments = mobile ? 60 : 180;
+  const trailPositions = new Float32Array(maxTrailSegments * 2 * 3);
+  const trailGeometry = new THREE.BufferGeometry();
+  const trailPositionAttribute = new THREE.BufferAttribute(trailPositions, 3);
+  trailPositionAttribute.setUsage(THREE.DynamicDrawUsage);
+  trailGeometry.setAttribute("position", trailPositionAttribute);
+  trailGeometry.setDrawRange(0, 0);
+  const trailMaterial = new THREE.LineBasicMaterial({
+    color: 0xd9d9d2,
+    transparent: true,
+    opacity: 0,
+    depthWrite: false,
+    depthTest: false
+  });
+  const trailLines = new THREE.LineSegments(trailGeometry, trailMaterial);
+  trailLines.frustumCulled = false;
+  trailLines.renderOrder = 0;
+  scene.add(trailLines);
+
+  const maxConnectionSegments = mobile ? 60 : 180;
+  const connectionPositions = new Float32Array(maxConnectionSegments * 2 * 3);
+  const connectionGeometry = new THREE.BufferGeometry();
+  const connectionPositionAttribute = new THREE.BufferAttribute(connectionPositions, 3);
+  connectionPositionAttribute.setUsage(THREE.DynamicDrawUsage);
+  connectionGeometry.setAttribute("position", connectionPositionAttribute);
+  connectionGeometry.setDrawRange(0, 0);
+  const connectionMaterial = new THREE.LineBasicMaterial({
+    color: 0xd8d6cf,
+    transparent: true,
+    opacity: 0,
+    depthWrite: false,
+    depthTest: false
+  });
+  const connectionLines = new THREE.LineSegments(connectionGeometry, connectionMaterial);
+  connectionLines.frustumCulled = false;
+  connectionLines.renderOrder = 0;
+  scene.add(connectionLines);
+
+  const trailEligible = (particle) => {
+    if (particle.bioType === "atmosphere") {
+      return false;
+    }
+    if (particle.bioType === "front") {
+      return particle.bioTextMotion < 0.06;
+    }
+    return true;
+  };
+
+  const eligibleForTextConnection = (particle) => {
+    if (particle.bioType === "atmosphere") {
+      return false;
+    }
+    if (particle.bioType === "front") {
+      return Math.sin(particle.bioFloatPhase * 8.731) > 0.60;
+    }
+    return particle.bioType === "side" ||
+      particle.bioType === "back" ||
+      particle.bioType === "volume";
+  };
 
   let width = 1;
   let height = 1;
@@ -260,6 +329,7 @@ async function startWebGLParticles(
   let bioPitch = 0;
   let bioRebuildTimer = 0;
   let bioDebugLogged = false;
+  let bioCountDebugLogged = false;
   const worldHeightAt = (z) => 2 * Math.tan((CAMERA_FOV * Math.PI) / 360) * (CAMERA_Z - z);
   const pixelWorld = (pixels, z = 0) => pixels * worldHeightAt(z) / height;
   const screenToWorld = (screenX, screenY, z) => ({
@@ -410,10 +480,26 @@ async function startWebGLParticles(
     });
 
     const typographyCount = bioTypographyCount;
-    const frontCount = Math.floor(typographyCount * 0.60);
-    const sideCount = Math.floor(typographyCount * 0.22);
-    const backCount = Math.floor(typographyCount * 0.10);
+    const frontCount = Math.floor(typographyCount * 0.84);
+    const sideCount = Math.floor(typographyCount * 0.07);
+    const backCount = Math.floor(typographyCount * 0.02);
     const volumeCount = typographyCount - frontCount - sideCount - backCount;
+    const rawMinX = completeBounds.minX;
+    const rawMaxX = completeBounds.maxX;
+    const rawMinY = completeBounds.minY;
+    const rawMaxY = completeBounds.maxY;
+    const rawMinZ = completeBounds.minZ;
+    const rawMaxZ = completeBounds.maxZ;
+    const rawWidth = Math.max(0.001, rawMaxX - rawMinX);
+    const rawCenterX = (rawMinX + rawMaxX) * 0.5;
+    const rawCenterY = (rawMinY + rawMaxY) * 0.5;
+    const rawCenterZ = (rawMinZ + rawMaxZ) * 0.5;
+    const desiredPixelWidth = mobile ? width * 0.84 : Math.min(width * 0.68, 1080);
+    const desiredFrontPixelSpacing = mobile ? 2.6 : 2.2;
+    const rawFrontSpacing =
+      desiredFrontPixelSpacing *
+      rawWidth /
+      desiredPixelWidth;
     const samplePosition = new THREE.Vector3();
     const sampleNormal = new THREE.Vector3();
     const classifySurfaceNormal = (normal) =>
@@ -444,40 +530,110 @@ async function startWebGLParticles(
     };
 
     const rawTargets = [];
-    const frontTargets = [];
-    const frontSpacing = mobile ? 0.030 : 0.027;
-    const acceptedFront = new Map();
-    const acceptFront = (sample, spacing) => {
-      const gx = Math.floor(sample.x / spacing);
-      const gy = Math.floor(sample.y / spacing);
-      for (let ox = -1; ox <= 1; ox += 1) {
-        for (let oy = -1; oy <= 1; oy += 1) {
-          const bucket = acceptedFront.get((gx + ox) + ":" + (gy + oy));
-          if (bucket && bucket.some((point) =>
-            (sample.x - point.x) ** 2 + (sample.y - point.y) ** 2 < spacing ** 2)) {
-            return false;
-          }
-        }
-      }
-      const key = gx + ":" + gy;
-      if (!acceptedFront.has(key)) acceptedFront.set(key, []);
-      acceptedFront.get(key).push({ x: sample.x, y: sample.y });
-      return true;
-    };
-
-    let spacing = frontSpacing;
-    while (frontTargets.length < frontCount && spacing >= frontSpacing * 0.48) {
+    const frontCandidates = [];
+    const candidateTarget = Math.max(frontCount * 8, 24000);
+    let candidateAttempts = 0;
+    while (
+      frontCandidates.length < candidateTarget &&
+      candidateAttempts < candidateTarget * 4
+    ) {
+      candidateAttempts += 1;
       const candidate = sampleWantedSurface("front");
-      if (candidate && acceptFront(candidate, spacing)) {
-        frontTargets.push(candidate);
-      } else if (frontTargets.length < frontCount && Math.random() < 0.02) {
-        spacing *= 0.985;
+      if (candidate) {
+        frontCandidates.push(candidate);
       }
     }
+    for (let index = frontCandidates.length - 1; index > 0; index -= 1) {
+      const swapIndex = Math.floor(Math.random() * (index + 1));
+      [frontCandidates[index], frontCandidates[swapIndex]] =
+        [frontCandidates[swapIndex], frontCandidates[index]];
+    }
+    const selectEvenlySpacedFront = (candidates, requiredCount, spacing) => {
+      const selected = [];
+      const grid = new Map();
+      const cellSize = spacing;
+      const canAccept = (sample) => {
+        const gx = Math.floor(sample.x / cellSize);
+        const gy = Math.floor(sample.y / cellSize);
+        for (let ox = -1; ox <= 1; ox += 1) {
+          for (let oy = -1; oy <= 1; oy += 1) {
+            const key = (gx + ox) + ":" + (gy + oy);
+            const bucket = grid.get(key);
+            if (!bucket) {
+              continue;
+            }
+            for (const point of bucket) {
+              const dx = sample.x - point.x;
+              const dy = sample.y - point.y;
+              if (dx * dx + dy * dy < spacing * spacing) {
+                return false;
+              }
+            }
+          }
+        }
+        return true;
+      };
+
+      for (const sample of candidates) {
+        if (selected.length >= requiredCount) {
+          break;
+        }
+        if (!canAccept(sample)) {
+          continue;
+        }
+        selected.push(sample);
+        const gx = Math.floor(sample.x / cellSize);
+        const gy = Math.floor(sample.y / cellSize);
+        const key = gx + ":" + gy;
+        if (!grid.has(key)) {
+          grid.set(key, []);
+        }
+        grid.get(key).push(sample);
+      }
+      return selected;
+    };
+
+    let frontTargets =
+      selectEvenlySpacedFront(
+        frontCandidates,
+        frontCount,
+        rawFrontSpacing
+      );
+    if (frontTargets.length < frontCount) {
+      frontTargets =
+        selectEvenlySpacedFront(
+          frontCandidates,
+          frontCount,
+          rawFrontSpacing * 0.88
+        );
+    }
+    if (frontTargets.length < frontCount) {
+      frontTargets =
+        selectEvenlySpacedFront(
+          frontCandidates,
+          frontCount,
+          rawFrontSpacing * 0.76
+        );
+    }
+    if (frontTargets.length < frontCount) {
+      frontTargets =
+        selectEvenlySpacedFront(
+          frontCandidates,
+          frontCount,
+          rawFrontSpacing * 0.64
+        );
+    }
+    const frontFallbackStart = frontTargets.length;
     while (frontTargets.length < frontCount) {
       const candidate = sampleWantedSurface("front");
-      if (!candidate) throw new Error("BIO TextGeometry front sampling failed");
+      if (!candidate) {
+        break;
+      }
       frontTargets.push(candidate);
+    }
+    const frontFallbackCount = frontTargets.length - frontFallbackStart;
+    if (frontTargets.length < frontCount) {
+      throw new Error("BIO TextGeometry front sampling failed");
     }
 
     const collectSurfaceTargets = (type, amount) => {
@@ -502,17 +658,6 @@ async function startWebGLParticles(
       });
     }
 
-    const rawMinX = completeBounds.minX;
-    const rawMaxX = completeBounds.maxX;
-    const rawMinY = completeBounds.minY;
-    const rawMaxY = completeBounds.maxY;
-    const rawMinZ = completeBounds.minZ;
-    const rawMaxZ = completeBounds.maxZ;
-    const rawWidth = Math.max(0.001, rawMaxX - rawMinX);
-    const rawCenterX = (rawMinX + rawMaxX) * 0.5;
-    const rawCenterY = (rawMinY + rawMaxY) * 0.5;
-    const rawCenterZ = (rawMinZ + rawMaxZ) * 0.5;
-    const desiredPixelWidth = mobile ? width * 0.84 : Math.min(width * 0.68, 1080);
     const desiredWorldWidth = Math.abs(
       screenToWorld(width * 0.5 + desiredPixelWidth * 0.5, height * 0.5, 0).x -
       screenToWorld(width * 0.5 - desiredPixelWidth * 0.5, height * 0.5, 0).x
@@ -546,13 +691,57 @@ async function startWebGLParticles(
       bioDebugLogged = true;
     }
     const atmosphereCount = count - typographyCount;
+    const textHalfWidth = typographyWidth * 0.5;
+    const textHalfHeight = typographyHeight * 0.5;
     for (let index = 0; index < atmosphereCount; index += 1) {
+      let x;
+      let y;
+      let z;
+
+      for (let attempt = 0; attempt < 30; attempt += 1) {
+        x = random(-typographyWidth * 0.72, typographyWidth * 0.72);
+        y = bioVerticalOffset +
+          random(-typographyHeight * 1.45, typographyHeight * 1.45);
+        z = random(-1.7, 1.7);
+
+        const insideTextProjection =
+          Math.abs(x) < textHalfWidth * 1.08 &&
+          Math.abs(y - bioVerticalOffset) < textHalfHeight * 1.18;
+        const closeToFrontPlane = Math.abs(z) < 0.82;
+
+        if (!(insideTextProjection && closeToFrontPlane) || Math.random() < 0.06) {
+          break;
+        }
+      }
+
       targets.push({
-        x: random(-typographyWidth * 0.62, typographyWidth * 0.62),
-        y: random(-typographyHeight * 1.05, typographyHeight * 1.05),
-        z: random(-1.6, 1.6),
+        x,
+        y,
+        z,
         type: "atmosphere"
       });
+    }
+    const geometryTargets = targets.filter((target) => target.type !== "atmosphere");
+    const typographyMinZ = Math.min(...geometryTargets.map((target) => target.z));
+    const typographyMaxZ = Math.max(...geometryTargets.map((target) => target.z));
+    if (!bioCountDebugLogged) {
+      console.table({
+        total: count,
+        typography: typographyCount,
+        front: frontCount,
+        side: sideCount,
+        back: backCount,
+        volume: volumeCount,
+        atmosphere: count - typographyCount,
+        desiredFrontPixelSpacing,
+        rawFrontSpacing,
+        acceptedFront: frontTargets.length,
+        frontFallback: frontFallbackCount,
+        frontFallbackPercent: frontFallbackCount / frontCount * 100,
+        bioMinZ: typographyMinZ,
+        bioMaxZ: typographyMaxZ
+      });
+      bioCountDebugLogged = true;
     }
     for (let index = targets.length - 1; index > 0; index -= 1) {
       const swapIndex = Math.floor(Math.random() * (index + 1));
@@ -569,8 +758,9 @@ async function startWebGLParticles(
       bioCopy.classList.remove("bio-particles-pending", "bio-particles-active");
       return;
     }
-    bioMinZ = Math.min(...targets.map((target) => target.z));
-    bioMaxZ = Math.max(...targets.map((target) => target.z));
+    const geometryTargets = targets.filter((target) => target.type !== "atmosphere");
+    bioMinZ = Math.min(...geometryTargets.map((target) => target.z));
+    bioMaxZ = Math.max(...geometryTargets.map((target) => target.z));
     particles.forEach((particle, index) => {
       const target = targets[index];
       particle.bioType = target.type;
@@ -579,23 +769,23 @@ async function startWebGLParticles(
       particle.bioY = target.y;
       particle.bioZ = target.z;
       particle.bioBaseSize = target.type === "front"
-        ? (Math.random() < 0.06 ? random(2.15, 2.45) : random(1.55, 2.15))
+        ? (Math.random() < 0.05 ? random(2.20, 2.55) : random(1.70, 2.20))
         : target.type === "side"
-          ? random(1.25, 1.85)
+          ? random(0.85, 1.30)
           : target.type === "back"
-            ? random(1.0, 1.55)
+            ? random(0.65, 1.00)
             : target.type === "volume"
-              ? random(1.10, 1.70)
-              : random(0.45, 1.0);
+              ? random(0.80, 1.18)
+              : random(0.40, 0.85);
       particle.bioBaseAlpha = target.type === "front"
-        ? random(0.72, 0.94)
+        ? random(0.84, 0.98)
         : target.type === "side"
-          ? random(0.30, 0.55)
+          ? random(0.055, 0.14)
           : target.type === "back"
-            ? random(0.12, 0.28)
+            ? random(0.015, 0.055)
             : target.type === "volume"
-              ? random(0.20, 0.42)
-              : (Math.random() < 0.025 ? random(0.05, 0.09) : random(0.008, 0.045));
+              ? random(0.045, 0.12)
+              : (Math.random() < 0.015 ? random(0.025, 0.055) : random(0.004, 0.022));
     });
     hasTextTargets = true;
     bioCopy.classList.remove("bio-particles-pending");
@@ -788,6 +978,19 @@ async function startWebGLParticles(
     const bioCosX = Math.cos(bioPitch);
     const bioSinX = Math.sin(bioPitch);
     const worldPerPixel = pixelWorld(1);
+    const bioTime = timestamp * 0.001;
+    const bioTextSettledVisibility = hasTextTargets
+      ? smoothstep(clamp((morph - 0.90) / 0.10))
+      : 0;
+    const currentPulse =
+      0.88 +
+      Math.sin(bioTime * 0.75) *
+        0.12;
+    trailMaterial.opacity = 0.055 * bioTextSettledVisibility;
+    connectionMaterial.opacity =
+      0.065 *
+      bioTextSettledVisibility *
+      currentPulse;
     particles.forEach((particle, index) => {
       const settings = BIO_STYLES[particle.bioType];
       const local = particle.hasBioTarget
@@ -960,7 +1163,6 @@ async function startWebGLParticles(
         rotatedZ +
         driftZ;
       const arc = Math.sin(local * Math.PI);
-      const bioTime = timestamp * 0.001;
       const idleX = Math.sin(bioTime * 0.16 * particle.bioSpeed + particle.bioPhase) *
         settings.xyMotion * worldPerPixel * settled;
       const idleY = Math.cos(bioTime * 0.14 * particle.bioSpeed + particle.bioPhase * 0.83) *
@@ -969,8 +1171,60 @@ async function startWebGLParticles(
         Math.sin(bioTime * 0.31 * particle.bioDepthSpeed + particle.bioPhase) * settings.zMotion +
         Math.sin(bioTime * 0.13 + particle.bioPhase * 1.37) * settings.zMotion * 0.28
       ) * settled;
-      const orientedX = particle.bioX * bioCosY + particle.bioZ * bioSinY;
-      const yawZ = -particle.bioX * bioSinY + particle.bioZ * bioCosY;
+      const textDepthAmplitude = particle.bioType === "front"
+        ? (particle.bioTextMotion < 0.18 ? 0.028 : 0.008)
+        : particle.bioType === "side" ? 0.065
+          : particle.bioType === "back" ? 0.115
+            : particle.bioType === "volume" ? 0.090 : 0;
+      const textDepthBreath =
+        Math.sin(
+          bioTime * 0.34 * particle.bioFloatSpeed +
+          particle.bioFloatPhase
+        ) *
+        textDepthAmplitude *
+        settled;
+      const textDepthDrift =
+        Math.sin(
+          bioTime * 0.11 +
+          particle.bioFloatPhase * 0.73
+        ) *
+        textDepthAmplitude *
+        0.45 *
+        settled;
+      const animatedDepthOffset =
+        particle.bioType === "atmosphere"
+          ? 0
+          : (textDepthBreath + textDepthDrift) *
+            particle.bioDepthDirection;
+      const xyAmplitude = particle.bioType === "front"
+        ? (particle.bioTextMotion < 0.18 ? worldPerPixel * 0.55 : worldPerPixel * 0.12)
+        : particle.bioType === "side" ? worldPerPixel * 0.75
+          : particle.bioType === "back" ? worldPerPixel * 1.15
+            : particle.bioType === "volume" ? worldPerPixel * 0.90 : 0;
+      const textFloatX =
+        Math.sin(
+          bioTime * 0.21 * particle.bioFloatSpeed +
+          particle.bioFloatPhase
+        ) *
+        xyAmplitude *
+        settled;
+      const textFloatY =
+        Math.cos(
+          bioTime * 0.17 * particle.bioFloatSpeed +
+          particle.bioFloatPhase * 0.81
+        ) *
+        xyAmplitude *
+        0.65 *
+        settled;
+      const depthDisplayScale = particle.bioType === "front" ? 1.00
+        : particle.bioType === "side" ? 1.35
+          : particle.bioType === "back" ? 1.85
+            : particle.bioType === "volume" ? 1.55 : 1.00;
+      const displayedBioZ =
+        particle.bioZ *
+        depthDisplayScale;
+      const orientedX = particle.bioX * bioCosY + displayedBioZ * bioSinY;
+      const yawZ = -particle.bioX * bioSinY + displayedBioZ * bioCosY;
       const orientedY = particle.bioY * bioCosX - yawZ * bioSinX;
       const orientedZ = particle.bioY * bioSinX + yawZ * bioCosX;
 
@@ -980,6 +1234,7 @@ async function startWebGLParticles(
       const distance = Math.hypot(dx, dy);
       const force = pointerActive && preferences.finePointer.matches && settled > 0
         ? smoothstep(clamp(1 - distance / 155)) * settled : 0;
+      const depthReveal = force * settled;
       const normalizedDx = dx / Math.max(distance, 1);
       const normalizedDy = -dy / Math.max(distance, 1);
       const targetOpenX = normalizedDx * force * settings.mouseXY * worldPerPixel * 0.5;
@@ -989,17 +1244,27 @@ async function startWebGLParticles(
           : particle.bioType === "back" ? 1.10
             : particle.bioType === "volume" ? 1.0 : 0.20;
       const depthDirection = Math.sin(particle.bioPhase * 2.17) >= 0 ? 1 : -1;
-      const targetOpenZ = force * settings.mouseZ * mouseDepthMultiplier * depthDirection;
+      const textDepthMouseBoost = particle.bioType === "side" ||
+        particle.bioType === "back" ||
+        particle.bioType === "volume"
+        ? 1.18
+        : 1;
+      const targetOpenZ =
+        force *
+        settings.mouseZ *
+        mouseDepthMultiplier *
+        textDepthMouseBoost *
+        depthDirection;
       const openEase = 1 - Math.exp(-6 * dt);
       particle.openX += (targetOpenX - particle.openX) * openEase;
       particle.openY += (targetOpenY - particle.openY) * openEase;
       particle.openZ += (targetOpenZ - particle.openZ) * openEase;
       const targetX = lerp(heroX, orientedX, local) +
-        arc * particle.arcX + (idleX + particle.openX) * local;
+        arc * particle.arcX + (idleX + textFloatX + particle.openX) * local;
       const targetY = lerp(heroY, orientedY, local) +
-        arc * particle.arcY + (idleY + particle.openY) * local;
+        arc * particle.arcY + (idleY + textFloatY + particle.openY) * local;
       const targetZ = lerp(heroZ, orientedZ, local) +
-        arc * particle.arcZ + (idleZ + particle.openZ) * local;
+        arc * particle.arcZ + (idleZ + animatedDepthOffset + particle.openZ) * local;
       const spring = 0.068 * delta;
       const damping = Math.pow(0.79, delta);
       particle.vx = (particle.vx + (targetX - particle.x) * spring) * damping;
@@ -1016,15 +1281,23 @@ async function startWebGLParticles(
        * Positive Z = closer to camera.
        */
 
-      const bioDepth01 = clamp((particle.z - bioMinZ) /
-        Math.max(0.001, bioMaxZ - bioMinZ));
+      const particleBioDepth01 = particle.bioType === "atmosphere"
+        ? clamp((particle.z + 1.7) / 3.4)
+        : clamp((particle.z - bioMinZ) /
+          Math.max(0.001, bioMaxZ - bioMinZ));
 
       /*
        * Near particles become slightly larger.
        * Far particles slightly smaller.
        */
 
-      const depthSizeScale = lerp(0.78, 1.16, bioDepth01);
+      const appliedDepthSizeScale = particle.bioType === "front"
+        ? lerp(0.94, 1.06, particleBioDepth01)
+        : lerp(0.78, 1.16, particleBioDepth01);
+      const animatedDepthSizeMultiplier = particle.bioType === "front" ? 1
+        : particle.bioType === "side" ? lerp(0.94, 1.08, particleBioDepth01)
+          : particle.bioType === "back" ? lerp(0.86, 1.12, particleBioDepth01)
+            : particle.bioType === "volume" ? lerp(0.90, 1.10, particleBioDepth01) : 1;
 
       const baseBioSize = particle.bioBaseSize * (mobile ? 0.76 : 1);
 
@@ -1032,22 +1305,35 @@ async function startWebGLParticles(
         lerp(
           particle.size,
           baseBioSize *
-            lerp(
-              1,
-              depthSizeScale,
-              settled
-            ),
+            appliedDepthSizeScale *
+            animatedDepthSizeMultiplier,
           local
         );
 
-      const depthAlphaScale = lerp(0.70, 1.08, bioDepth01);
+      const appliedDepthAlphaScale = particle.bioType === "front"
+        ? lerp(0.94, 1.04, particleBioDepth01)
+        : lerp(0.70, 1.08, particleBioDepth01);
+      const supportDepthAlphaScale = particle.bioType === "front" ||
+        particle.bioType === "atmosphere"
+        ? 1
+        : lerp(0.86, 1.12, particleBioDepth01);
+      let interactionAlphaBoost = 1;
+
+      if (particle.bioType === "side") {
+        interactionAlphaBoost = lerp(1, 1.55, depthReveal);
+      } else if (particle.bioType === "back") {
+        interactionAlphaBoost = lerp(1, 1.75, depthReveal);
+      } else if (particle.bioType === "volume") {
+        interactionAlphaBoost = lerp(1, 1.60, depthReveal);
+      }
 
       const bioAlpha =
-        particle.bioBaseAlpha *
-        lerp(
+        Math.min(
           1,
-          depthAlphaScale,
-          settled
+          particle.bioBaseAlpha *
+            appliedDepthAlphaScale *
+            supportDepthAlphaScale *
+            interactionAlphaBoost
         );
 
       alphas[index] =
@@ -1060,6 +1346,126 @@ async function startWebGLParticles(
     positionAttribute.needsUpdate = true;
     sizeAttribute.needsUpdate = true;
     alphaAttribute.needsUpdate = true;
+    let trailSegmentCount = 0;
+    if (bioTextSettledVisibility >= 0.05) {
+      for (let index = 0; index < particles.length; index += 1) {
+        if (trailSegmentCount >= maxTrailSegments) {
+          break;
+        }
+        const particle = particles[index];
+        if (!trailEligible(particle)) {
+          continue;
+        }
+        const velocityMagnitude = Math.sqrt(
+          particle.vx * particle.vx +
+          particle.vy * particle.vy +
+          particle.vz * particle.vz
+        );
+        if (velocityMagnitude < 0.0005) {
+          continue;
+        }
+        const trailScale = particle.bioType === "back" ? 13
+          : particle.bioType === "volume" ? 11
+            : particle.bioType === "side" ? 9 : 6;
+        const offset = trailSegmentCount * 6;
+        trailPositions[offset] = particle.x;
+        trailPositions[offset + 1] = particle.y;
+        trailPositions[offset + 2] = particle.z;
+        trailPositions[offset + 3] = particle.x - particle.vx * trailScale;
+        trailPositions[offset + 4] = particle.y - particle.vy * trailScale;
+        trailPositions[offset + 5] = particle.z - particle.vz * trailScale;
+        trailSegmentCount += 1;
+      }
+    }
+    trailGeometry.setDrawRange(0, trailSegmentCount * 2);
+    trailPositionAttribute.needsUpdate = true;
+
+    let connectionSegmentCount = 0;
+    if (bioTextSettledVisibility >= 0.05) {
+      const connectionDistance = worldPerPixel * (mobile ? 22 : 26);
+      const connectionDistanceSquared = connectionDistance * connectionDistance;
+      const cellSize = connectionDistance;
+      const connectionGrid = new Map();
+      const connectionCandidates = [];
+      const connectionKey = (x, y) =>
+        Math.floor(x / cellSize) + ":" + Math.floor(y / cellSize);
+      for (let index = 0; index < particles.length; index += 1) {
+        const particle = particles[index];
+        if (!eligibleForTextConnection(particle)) {
+          continue;
+        }
+        const candidate = {
+          particle,
+          candidateIndex: connectionCandidates.length,
+          cellX: Math.floor(particle.x / cellSize),
+          cellY: Math.floor(particle.y / cellSize)
+        };
+        connectionCandidates.push(candidate);
+        const key = connectionKey(particle.x, particle.y);
+        if (!connectionGrid.has(key)) {
+          connectionGrid.set(key, []);
+        }
+        connectionGrid.get(key).push(candidate);
+        if (connectionCandidates.length >= (mobile ? 400 : 1100)) {
+          break;
+        }
+      }
+      for (const candidate of connectionCandidates) {
+        if (connectionSegmentCount >= maxConnectionSegments) {
+          break;
+        }
+        const a = candidate.particle;
+        for (let offsetX = -1; offsetX <= 1; offsetX += 1) {
+          if (connectionSegmentCount >= maxConnectionSegments) {
+            break;
+          }
+          for (let offsetY = -1; offsetY <= 1; offsetY += 1) {
+            if (connectionSegmentCount >= maxConnectionSegments) {
+              break;
+            }
+            const bucket = connectionGrid.get(
+              (candidate.cellX + offsetX) + ":" + (candidate.cellY + offsetY)
+            );
+            if (!bucket) {
+              continue;
+            }
+            for (const neighbor of bucket) {
+              if (connectionSegmentCount >= maxConnectionSegments) {
+                break;
+              }
+              if (neighbor.candidateIndex <= candidate.candidateIndex) {
+                continue;
+              }
+              const b = neighbor.particle;
+              const stableConnection = Math.sin(
+                a.bioFloatPhase * 13.713 +
+                b.bioFloatPhase * 7.119
+              );
+              if (stableConnection <= 0.48) {
+                continue;
+              }
+              const dx = a.x - b.x;
+              const dy = a.y - b.y;
+              const dz = (a.z - b.z) * 0.65;
+              const distanceSquared = dx * dx + dy * dy + dz * dz;
+              if (distanceSquared >= connectionDistanceSquared) {
+                continue;
+              }
+              const positionOffset = connectionSegmentCount * 6;
+              connectionPositions[positionOffset] = a.x;
+              connectionPositions[positionOffset + 1] = a.y;
+              connectionPositions[positionOffset + 2] = a.z;
+              connectionPositions[positionOffset + 3] = b.x;
+              connectionPositions[positionOffset + 4] = b.y;
+              connectionPositions[positionOffset + 5] = b.z;
+              connectionSegmentCount += 1;
+            }
+          }
+        }
+      }
+    }
+    connectionGeometry.setDrawRange(0, connectionSegmentCount * 2);
+    connectionPositionAttribute.needsUpdate = true;
     renderer.render(scene, camera);
     frame = requestAnimationFrame(draw);
   }
