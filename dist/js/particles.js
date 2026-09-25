@@ -84,21 +84,14 @@ function startWebGLParticles(THREE, scrollScene, preferences, canvas, bioCopy, f
     const seedX = Math.cos(theta) * radial * shell;
     const seedY = u * shell * 0.9;
     const seedZ = Math.sin(theta) * radial * shell;
-    const heroScale = Math.random();
-    const heroSize = heroScale < 0.65 ? random(0.7, 1.2)
-      : heroScale < 0.9 ? random(1.35, 2.1) : random(2.25, 3.0);
-    const heroAlpha = heroScale < 0.65 ? random(0.035, 0.065)
-      : heroScale < 0.9 ? random(0.045, 0.085) : random(0.055, 0.095);
     return {
       seedX, seedY, seedZ,
       heroX: 0, heroY: 0, heroZ: seedZ * 1.8,
       bioX: 0, bioY: 0, bioZ: 0,
       x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0,
       openX: 0, openY: 0, openZ: 0,
-      size: heroSize,
-      alpha: heroAlpha,
-      heroVisibility: Math.random() < 0.28 ? 0.025 : 1,
-      heroColor: Math.random() < 0.11 ? [241 / 255, 91 / 255, 50 / 255] : [245 / 255, 245 / 255, 238 / 255],
+      size: random(1.1, 2.0),
+      alpha: random(0.035, 0.09),
       color: Math.random() < 0.02 ? [241 / 255, 91 / 255, 50 / 255] : [245 / 255, 245 / 255, 238 / 255],
       phase: random(0, Math.PI * 2),
       layer: 3, hasBioTarget: false,
@@ -114,15 +107,13 @@ function startWebGLParticles(THREE, scrollScene, preferences, canvas, bioCopy, f
   const positionAttribute = new THREE.BufferAttribute(positions, 3);
   const sizeAttribute = new THREE.BufferAttribute(sizes, 1);
   const alphaAttribute = new THREE.BufferAttribute(alphas, 1);
-  const colorAttribute = new THREE.BufferAttribute(colors, 3);
   positionAttribute.setUsage(THREE.DynamicDrawUsage);
   sizeAttribute.setUsage(THREE.DynamicDrawUsage);
   alphaAttribute.setUsage(THREE.DynamicDrawUsage);
-  colorAttribute.setUsage(THREE.DynamicDrawUsage);
   geometry.setAttribute("position", positionAttribute);
   geometry.setAttribute("aSize", sizeAttribute);
   geometry.setAttribute("aAlpha", alphaAttribute);
-  geometry.setAttribute("aColor", colorAttribute);
+  geometry.setAttribute("aColor", new THREE.BufferAttribute(colors, 3));
   const material = new THREE.ShaderMaterial({
     uniforms: { uPixelRatio: { value: 1 } },
     vertexShader: VERTEX_SHADER,
@@ -135,8 +126,6 @@ function startWebGLParticles(THREE, scrollScene, preferences, canvas, bioCopy, f
 
   let width = 1;
   let height = 1;
-  let heroRadiusX = 1;
-  let heroRadiusY = 1;
   let progress = 0;
   let frame = 0;
   let lastTimestamp = 0;
@@ -163,11 +152,9 @@ function startWebGLParticles(THREE, scrollScene, preferences, canvas, bioCopy, f
     camera.updateProjectionMatrix();
     const halfHeight = worldHeightAt(0) * 0.5;
     const halfWidth = halfHeight * camera.aspect;
-    heroRadiusX = halfWidth * 1.38;
-    heroRadiusY = halfHeight * 1.28;
     particles.forEach((particle) => {
-      particle.heroX = particle.seedX * heroRadiusX;
-      particle.heroY = particle.seedY * heroRadiusY;
+      particle.heroX = particle.seedX * halfWidth * 1.38;
+      particle.heroY = particle.seedY * halfHeight * 1.28;
       particle.heroZ = particle.seedZ * (mobile ? 1.35 : 1.8);
       const upper = clamp((particle.seedY + 1) * 0.5);
       particle.morphStart = 0.02 + (1 - upper) * 0.16 + random(0, 0.04);
@@ -296,12 +283,9 @@ function startWebGLParticles(THREE, scrollScene, preferences, canvas, bioCopy, f
     const delta = lastTimestamp ? clamp((timestamp - lastTimestamp) / 16.67, 0.5, 2.5) : 1;
     lastTimestamp = timestamp;
     const morph = smoothstep(clamp((progress - MORPH_START) / (MORPH_END - MORPH_START)));
-    const angle = Math.sin(timestamp * 0.000045) * 0.14;
+    const angle = Math.sin(timestamp * 0.00012) * 0.18;
     const cosAngle = Math.cos(angle);
     const sinAngle = Math.sin(angle);
-    const orbit = timestamp * 0.0000012;
-    const cosOrbit = Math.cos(orbit);
-    const sinOrbit = Math.sin(orbit);
     const pointerX = preferences.finePointer.matches ? ((mouseX / width) - 0.5) * pixelWorld(92) : 0;
     const pointerY = preferences.finePointer.matches ? (0.5 - mouseY / height) * pixelWorld(38) : 0;
     const worldPerPixel = pixelWorld(1);
@@ -311,16 +295,10 @@ function startWebGLParticles(THREE, scrollScene, preferences, canvas, bioCopy, f
         ? smoothstep(clamp((morph - particle.morphStart) / (particle.morphEnd - particle.morphStart)))
         : 0;
       const settled = smoothstep(clamp((local - 0.82) / 0.18));
-      const depth = clamp((particle.seedZ + 1.18) / 2.36);
-      const orbitX = (particle.seedX * cosOrbit - particle.seedY * sinOrbit) * heroRadiusX;
-      const orbitY = (particle.seedX * sinOrbit + particle.seedY * cosOrbit) * heroRadiusY;
-      const driftX = Math.sin(timestamp * 0.00009 + particle.phase) * (0.2 + depth * 0.45) * worldPerPixel;
-      const driftY = Math.cos(timestamp * 0.00007 + particle.phase * 1.3) * (0.2 + depth * 0.35) * worldPerPixel;
-      const driftZ = Math.sin(timestamp * 0.00008 + particle.phase * 0.8) * (0.015 + depth * 0.07);
-      const rotatedX = orbitX * cosAngle - particle.heroZ * sinAngle;
-      const rotatedZ = orbitX * sinAngle + particle.heroZ * cosAngle + driftZ;
-      const heroX = rotatedX + driftX + pointerX * (1 - local);
-      const heroY = orbitY + driftY + pointerY * (1 - local);
+      const rotatedX = particle.heroX * cosAngle - particle.heroZ * sinAngle;
+      const rotatedZ = particle.heroX * sinAngle + particle.heroZ * cosAngle;
+      const heroX = rotatedX + pointerX * (1 - local);
+      const heroY = particle.heroY + pointerY * (1 - local);
       const arc = Math.sin(local * Math.PI);
       const idleX = Math.sin(timestamp * 0.00051 + particle.phase) * settings.idleXY * worldPerPixel * settled;
       const idleY = Math.cos(timestamp * 0.00043 + particle.phase * 0.7) * settings.idleXY * 0.8 * worldPerPixel * settled;
@@ -357,16 +335,12 @@ function startWebGLParticles(THREE, scrollScene, preferences, canvas, bioCopy, f
       positions[offset] = particle.x;
       positions[offset + 1] = particle.y;
       positions[offset + 2] = particle.z;
-      sizes[index] = lerp(particle.size * (0.72 + depth * 0.5), settings.size * (mobile ? 0.76 : 1), local);
-      alphas[index] = lerp(particle.alpha * (0.48 + depth * 0.66) * particle.heroVisibility, settings.alpha, local);
-      colors[offset] = lerp(particle.heroColor[0], particle.color[0], local);
-      colors[offset + 1] = lerp(particle.heroColor[1], particle.color[1], local);
-      colors[offset + 2] = lerp(particle.heroColor[2], particle.color[2], local);
+      sizes[index] = lerp(particle.size, settings.size * (mobile ? 0.76 : 1), local);
+      alphas[index] = lerp(particle.alpha, settings.alpha, local);
     });
     positionAttribute.needsUpdate = true;
     sizeAttribute.needsUpdate = true;
     alphaAttribute.needsUpdate = true;
-    colorAttribute.needsUpdate = true;
     renderer.render(scene, camera);
     frame = requestAnimationFrame(draw);
   }
