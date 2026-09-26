@@ -9,7 +9,7 @@ const descriptions = [
 
 export function initDisciplines(preferences) {
   const section = document.querySelector(".disciplines-section");
-  if (!section) return;
+  if (!section || section.classList.contains("is-temporarily-hidden")) return;
 
   const cubeScene = section.querySelector(".disciplines-cube-scene");
   const cube = section.querySelector(".disciplines-cube");

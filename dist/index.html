@@ -26,16 +26,14 @@
         ><span class="ma-m">M</span><span class="ma-a">A</span></a
       >
       <nav class="desktop-nav" aria-label="Primary">
-        <a class="scramble-link" href="#work" data-label="WORK">WORK</a>
-        <a class="scramble-link" href="#about" data-label="ABOUT">ABOUT</a>
-        <a class="scramble-link" href="cv/index.html" data-label="CV">CV</a>
+        <a href="#work"><span class="nav-letter">W</span><span class="nav-letter">O</span><span class="nav-letter">R</span><span class="nav-letter">K</span></a>
+        <a href="#about"><span class="nav-letter">A</span><span class="nav-letter">B</span><span class="nav-letter">O</span><span class="nav-letter">U</span><span class="nav-letter">T</span></a>
+        <a href="cv/index.html"><span class="nav-letter">C</span><span class="nav-letter">V</span></a>
         <a
-          class="scramble-link"
           href="https://gr.linkedin.com/in/michail-androulakis-525161168"
           target="_blank"
           rel="noreferrer"
-          data-label="CONTACT"
-          >CONTACT</a
+          > <span class="nav-letter">C</span><span class="nav-letter">O</span><span class="nav-letter">N</span><span class="nav-letter">T</span><span class="nav-letter">A</span><span class="nav-letter">C</span><span class="nav-letter">T</span></a
         >
       </nav>
       <button
@@ -76,20 +74,18 @@
         aria-label="Creative Designer introduction"
       >
         <section class="home-hero" id="hero">
+          <canvas class="bio-reveal" id="bio-reveal" aria-hidden="true"></canvas>
           <canvas class="particles" id="particles" aria-hidden="true"></canvas>
 
           <div class="bio-copy" id="bio-copy" aria-hidden="true">
             <p
               class="bio-text"
-              data-bio="I’m Mike, a creative designer working across identity, digital, motion and web."
-            >I’m Mike, a creative designer working across identity, digital, motion and web.</p>
-            <p
-              class="bio-text bio-text-secondary"
-              data-bio="I build visual systems and interactive experiences where concept, movement and technology meet."
-            >I build visual systems and interactive experiences where concept, movement and technology meet.</p>
+              data-bio-desktop-lines="I'm Mike, a creative designer|working across identity,|digital, motion and web."
+              data-bio-mobile-lines="I'm Mike,|a creative designer|working across identity,|digital, motion and web."
+              data-bio="I'm Mike, a creative designer working across identity, digital, motion and web."
+            >I'm Mike, a creative designer working across identity, digital, motion and web.</p>
           </div>
 
-          <div class="mouse-glow" id="mouse-glow" aria-hidden="true"></div>
 
           <div class="hero-center" id="hero-center">
             <div class="type-lockup" aria-label="Creative Designer">
@@ -110,7 +106,7 @@
       </section>
 
       <section
-        class="work-section disciplines-section"
+        class="work-section disciplines-section is-temporarily-hidden"
         id="work"
         aria-label="Disciplines"
       >

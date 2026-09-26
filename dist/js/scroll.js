@@ -24,7 +24,7 @@ export function createScrollScene(stage,preferences){
   const render=()=>{
     frame=0;
     if(preferences.reduceMotion.matches)current=target;
-    else current+=(target-current)*.072;
+    else current+=(target-current)*.12;
     if(Math.abs(target-current)<.00045)current=target;
     notify();
     if(current!==target)frame=requestAnimationFrame(render);
@@ -39,7 +39,7 @@ export function createScrollScene(stage,preferences){
 
   const wheelStep=()=>{
     const diff=wheelTarget-wheelCurrent;
-    wheelCurrent+=diff*.072;
+    wheelCurrent+=diff*.11;
     if(Math.abs(diff)<.42){
       wheelCurrent=wheelTarget;
       internalScroll=true;

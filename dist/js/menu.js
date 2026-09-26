@@ -54,7 +54,7 @@ export function initMenu(preferences) {
   });
 
   document
-    .querySelectorAll(".scramble-link, .disciplines-face-word")
+    .querySelectorAll(".disciplines-face-word")
     .forEach((link) => {
       const finalText = link.dataset.label || link.textContent.trim();
       link.textContent = finalText;

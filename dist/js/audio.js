@@ -9,6 +9,13 @@ export function initAudio(){
   let primed=false;
   let context=null;
 
+  const setSoundLabel=(text)=>{
+    toggle.setAttribute('aria-label',text);
+    toggle.innerHTML=[...text].map(char=>char===' '
+      ? '<span class="sound-letter sound-space">&nbsp;</span>'
+      : '<span class="sound-letter">'+char+'</span>').join('');
+  };
+
   const music=new Audio('./Deep%20Space%20Drones.mp3');
   music.loop=true;
   music.preload='auto';
@@ -18,7 +25,7 @@ export function initAudio(){
   music.setAttribute('webkit-playsinline','');
 
   const updateLabel=()=>{
-    toggle.textContent=soundOn?'SOUND ON':'SOUND OFF';
+    setSoundLabel(soundOn?'SOUND ON':'SOUND OFF');
     toggle.setAttribute('aria-pressed',String(soundOn));
     hint?.classList.toggle('is-hidden',!soundOn||userMuted||activated);
   };

@@ -4,6 +4,8 @@
   --orange: #f15b32;
   --bg: #080808;
   --white: #f4f4f4;
+  --fixed-ui-base: #ffffff;
+  --fixed-ui-hover: #a8a8a8;
 }
 * {
   box-sizing: border-box;
@@ -67,7 +69,7 @@ button {
   letter-spacing: -0.05em;
   line-height: 1;
   font-variant-numeric: tabular-nums;
-  color: var(--white);
+  color: #fff;
 }
 .loading-active,
 .loading-active body {
@@ -77,7 +79,7 @@ button {
 /* Hero */
 .scroll-stage {
   position: relative;
-  height: 245svh;
+  height: 330svh;
   background: var(--bg);
 }
 .home-hero {
@@ -98,29 +100,6 @@ button {
   will-change: opacity;
 }
 
-.mouse-glow {
-  position: absolute;
-  left: 0;
-  top: 0;
-  width: clamp(140px, 18vw, 260px);
-  aspect-ratio: 1;
-  border-radius: 50%;
-  pointer-events: none;
-  z-index: 20;
-  transform: translate3d(-50%, -50%, 0) scale(1);
-  background: radial-gradient(
-    circle,
-    rgba(241, 91, 50, 0.16) 0%,
-    rgba(241, 91, 50, 0.07) 28%,
-    rgba(241, 91, 50, 0) 72%
-  );
-  opacity: 0.32;
-  visibility: visible;
-  transition:
-    opacity 0.18s ease,
-    transform 0.18s ease;
-  will-change: transform, background, opacity;
-}
 .hero-center {
   position: absolute;
   left: 50%;
@@ -662,25 +641,6 @@ button {
 .bio-text-primary {
   max-width: min(1120px, 86vw);
 }
-.bio-text-secondary {
-  margin-top: clamp(24px, 3.5vh, 42px);
-  max-width: 880px;
-  font-family: Sora, Arial, sans-serif;
-  font-size: clamp(16px, 1.55vw, 24px);
-  font-weight: 700;
-  line-height: 1.45;
-  letter-spacing: -0.018em;
-  color: #888;
-  opacity: 0;
-  filter: blur(7px);
-  clip-path: inset(0 100% 0 0);
-  transform: translate3d(0, 10px, 0);
-  transition:
-    opacity 0.95s cubic-bezier(0.22, 0.78, 0.18, 1),
-    filter 0.95s cubic-bezier(0.22, 0.78, 0.18, 1),
-    transform 0.95s cubic-bezier(0.22, 0.78, 0.18, 1),
-    clip-path 1.08s cubic-bezier(0.22, 0.78, 0.18, 1);
-}
 /* Header */
 .site-nav {
   position: fixed;
@@ -719,22 +679,33 @@ button {
   line-height: 1;
   letter-spacing: -0.13em;
   transform: translateY(-50%);
-  transition:
-    transform 0.35s cubic-bezier(0.22, 0.8, 0.2, 1),
-    color 0.35s ease;
-  color: var(--white);
+  transition: transform 0.35s cubic-bezier(0.22, 0.8, 0.2, 1);
+  color: inherit;
+}
+.is-temporarily-hidden {
+  display: none !important;
+}
+.bio-reveal {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 2;
+  pointer-events: none;
+}
+.site-nav > .nav-mark {
+  color: var(--fixed-ui-base);
+  transition: color 0.25s ease;
+}
+.site-nav > .nav-mark:hover,
+.site-nav > .nav-mark:focus-visible {
+  color: var(--fixed-ui-hover);
 }
 .nav-mark .ma-m {
   left: 0;
 }
 .nav-mark .ma-a {
   left: 13px;
-}
-.nav-mark:hover .ma-m {
-  transform: translate(-1px, -50%);
-}
-.nav-mark:hover .ma-a {
-  transform: translate(1px, -50%);
 }
 .desktop-nav {
   display: flex;
@@ -745,15 +716,19 @@ button {
   position: relative;
   display: inline-block;
   text-decoration: none;
-  color: #a8a8a8;
+  color: var(--fixed-ui-base);
   transition: color 0.25s ease;
   font-variant-numeric: tabular-nums;
   text-align: center;
   white-space: nowrap;
 }
+.nav-letter {
+  display: inline-block;
+  will-change: transform;
+}
 .desktop-nav a:hover,
 .desktop-nav a:focus-visible {
-  color: #fff;
+  color: var(--fixed-ui-hover);
 }
 #menu-open {
   display: none;
@@ -795,10 +770,6 @@ button {
 #menu.is-visible #menu-close span:last-child {
   top: 12px;
   transform: rotate(-45deg);
-}
-html.menu-active .mouse-glow {
-  opacity: 0 !important;
-  visibility: hidden !important;
 }
 
 /* Mobile menu */
@@ -883,15 +854,10 @@ html.menu-active .mouse-glow {
 html.menu-active {
   overflow: hidden;
 }
-html.menu-active .mouse-glow {
-  opacity: 0 !important;
-  visibility: hidden !important;
-}
 
 /* Cursor */
 .cursor-ring,
-.cursor-dot,
-.mouse-glow {
+.cursor-dot {
   cursor: none !important;
 }
 .cursor-ring {
@@ -996,7 +962,7 @@ html.menu-active .cursor-dot {
   padding: 0;
   border: 0;
   background: transparent;
-  color: #9a9a9a;
+  color: var(--fixed-ui-base);
   font:
     700 9px/1 Sora,
     Arial,
@@ -1011,13 +977,20 @@ html.menu-active .cursor-dot {
 }
 .sound-toggle:hover,
 .sound-toggle:focus-visible {
-  color: var(--white);
+  color: var(--fixed-ui-hover);
+}
+.sound-letter {
+  display: inline-block;
+  will-change: transform;
+}
+.sound-space {
+  width: 0.45em;
 }
 
 @media (pointer: fine) {
   html,
   body,
-  body *:not(.cursor-ring):not(.cursor-dot):not(.mouse-glow),
+  body *:not(.cursor-ring):not(.cursor-dot),
   a,
   button,
   [role="button"],
@@ -1035,8 +1008,7 @@ html.menu-active .cursor-dot {
     cursor: none !important;
   }
   .cursor-ring,
-  .cursor-dot,
-  .mouse-glow {
+  .cursor-dot {
     cursor: none !important;
     opacity: 1 !important;
     visibility: visible !important;
@@ -1052,7 +1024,7 @@ html.menu-active .cursor-dot {
 }
 @media (max-width: 700px) {
   .scroll-stage {
-    height: 235svh;
+    height: 300svh;
   }
   .hero-center {
     width: 90vw;
@@ -1113,13 +1085,6 @@ html.menu-active .cursor-dot {
     line-height: 1.06;
     letter-spacing: -0.032em;
   }
-  .bio-text-secondary {
-    margin-top: 24px;
-    max-width: 84vw;
-    font-size: clamp(13px, 3.6vw, 17px);
-    line-height: 1.48;
-    letter-spacing: -0.012em;
-  }
 }
 
 /* Shared HERO → BIO particle state */
@@ -1138,30 +1103,12 @@ html.menu-active .cursor-dot {
   opacity: 0 !important;
   visibility: hidden;
 }
-.bio-text-secondary {
-  opacity: 0;
-  transform: translate3d(0, 8px, 0);
-  filter: blur(3px);
-  clip-path: inset(0 100% 0 0);
-  transition:
-    opacity 0.85s cubic-bezier(0.22, 0.78, 0.18, 1),
-    transform 0.85s cubic-bezier(0.22, 0.78, 0.18, 1),
-    filter 0.85s cubic-bezier(0.22, 0.78, 0.18, 1),
-    clip-path 1.05s cubic-bezier(0.22, 0.78, 0.18, 1);
-}
-.bio-copy.bio-secondary-visible .bio-text-secondary,
 .bio-copy.bio-simple-visible .bio-text-primary,
-.bio-copy.bio-simple-visible .bio-text-secondary {
+.bio-copy.bio-simple-visible .bio-text-primary {
   opacity: 1;
 }
 .bio-copy.bio-simple-visible .bio-text-primary {
   visibility: visible;
-}
-.bio-copy.bio-secondary-visible .bio-text-secondary,
-.bio-copy.bio-simple-visible .bio-text-secondary {
-  transform: none;
-  filter: none;
-  clip-path: none;
 }
 .particles {
   position: fixed;
@@ -1173,19 +1120,10 @@ html.menu-active .cursor-dot {
 }
 @media (prefers-reduced-motion: reduce) {
   .bio-text-primary,
-  .bio-text-secondary {
-    transition: opacity 0.25s ease !important;
-  }
-  .bio-text-secondary {
-    transform: none !important;
-    filter: none !important;
-    clip-path: none !important;
-  }
 }
 @media (pointer: coarse) {
   .cursor-dot,
-  .cursor-ring,
-  .mouse-glow {
+  .cursor-ring {
     display: none;
   }
   .sound-toggle {
@@ -1193,8 +1131,7 @@ html.menu-active .cursor-dot {
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .cursor-ring,
-  .mouse-glow {
+  .cursor-ring {
     display: none;
   }
   #menu {

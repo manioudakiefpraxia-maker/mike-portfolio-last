@@ -6,7 +6,6 @@ export function initHero(scene,preferences){
   const heroCenter=document.getElementById('hero-center');
   const creative=document.getElementById('creative');
   const designer=document.getElementById('designer');
-  const mouseGlow=document.getElementById('mouse-glow');
   const cursorDot=document.getElementById('cursor-dot');
   const cursorRing=document.getElementById('cursor-ring');
   const loading=document.getElementById('loading');
@@ -101,21 +100,6 @@ export function initHero(scene,preferences){
     const shift=progress*innerHeight*1.14;
     heroCenter.style.transform='translate3d(-50%,calc(-50% - '+shift.toFixed(1)+'px),0)';
 
-    if(mouseGlow){
-      const fadeProgress=clamp(progress*0.7);
-      const glowScale=Math.max(0.58,1-fadeProgress*.42);
-      const glowOpacity=Math.max(0,0.39-(fadeProgress*0.39));
-      const whitePhase=clamp((progress-.14)/.2);
-      const orangeMix=Math.max(0,1-whitePhase);
-      const r=Math.round(241*orangeMix + 255*whitePhase);
-      const g=Math.round((91*orangeMix) + 255*whitePhase);
-      const b=Math.round((50*orangeMix) + 255*whitePhase);
-      const a1=(.14*(1-whitePhase)) + (.06*whitePhase);
-      const a2=(.07*(1-whitePhase)) + (.022*whitePhase);
-      mouseGlow.style.background='radial-gradient(circle,rgba('+r+','+g+','+b+','+a1.toFixed(3)+') 0%,rgba('+r+','+g+','+b+','+a2.toFixed(3)+') 35%,rgba('+r+','+g+','+b+',0) 72%)';
-      mouseGlow.style.opacity=String(glowOpacity.toFixed(3));
-      mouseGlow.style.transform='translate3d(-50%,-50%,0) scale('+glowScale.toFixed(3)+')';
-    }
   });
 
   if(!preferences.finePointer.matches)return;
@@ -129,10 +113,15 @@ export function initHero(scene,preferences){
   let my=innerHeight*.5;
   let ringX=mx;
   let ringY=my;
-  let glowX=mx;
-  let glowY=my;
   let pointerActive=false;
   const letterState=letters.map(()=>({x:0,y:0,tx:0,ty:0}));
+  let navInteractiveLetters=[];
+  let navLetterState=[];
+  const refreshMagneticLetters=()=>{
+    navInteractiveLetters=[...document.querySelectorAll('.nav-mark .ma-m, .nav-mark .ma-a, .desktop-nav .nav-letter, .sound-toggle .sound-letter')];
+    navLetterState=navInteractiveLetters.map(()=>({x:0,y:0,tx:0,ty:0}));
+  };
+  refreshMagneticLetters();
 
   const setCustomCursorPosition=(x,y)=>{
     if(cursorDot){
@@ -167,17 +156,10 @@ export function initHero(scene,preferences){
   const cursorLoop=()=>{
     ringX+=(mx-ringX)*.22;
     ringY+=(my-ringY)*.22;
-    glowX+=(mx-glowX)*.075;
-    glowY+=(my-glowY)*.075;
 
     if(cursorRing){
       cursorRing.style.left=ringX+'px';
       cursorRing.style.top=ringY+'px';
-    }
-    if(mouseGlow){
-      const rect=hero.getBoundingClientRect();
-      mouseGlow.style.left=(glowX-rect.left)+'px';
-      mouseGlow.style.top=(glowY-rect.top)+'px';
     }
 
     if(introFinished){
@@ -206,6 +188,30 @@ export function initHero(scene,preferences){
         letter.style.transform='translate3d('+state.x.toFixed(2)+'px,'+state.y.toFixed(2)+'px,0)';
       });
     }
+    if (document.querySelectorAll('.sound-toggle .sound-letter').length + document.querySelectorAll('.nav-mark .ma-m, .nav-mark .ma-a, .desktop-nav .nav-letter').length !== navInteractiveLetters.length) {
+      refreshMagneticLetters();
+    }
+    navInteractiveLetters.forEach((letter,index)=>{
+      const state=navLetterState[index];
+      const rect=letter.getBoundingClientRect();
+      const dx=mx-(rect.left+rect.width*.5);
+      const dy=my-(rect.top+rect.height*.5);
+      const distance=Math.hypot(dx,dy);
+      if(pointerActive&&distance<72&&distance>.001){
+        const force=(1-distance/72)*4.2;
+        state.tx=dx/distance*force;
+        state.ty=dy/distance*force;
+      }else{
+        state.tx=0;
+        state.ty=0;
+      }
+      state.x+=(state.tx-state.x)*.16;
+      state.y+=(state.ty-state.y)*.16;
+      const isMark=letter.classList.contains('ma-m')||letter.classList.contains('ma-a');
+      letter.style.transform=isMark
+        ? 'translate3d('+state.x.toFixed(2)+'px,calc(-50% + '+state.y.toFixed(2)+'px),0)'
+        : 'translate3d('+state.x.toFixed(2)+'px,'+state.y.toFixed(2)+'px,0)';
+    });
     requestAnimationFrame(cursorLoop);
   };
   requestAnimationFrame(cursorLoop);
