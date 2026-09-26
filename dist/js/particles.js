@@ -180,6 +180,7 @@ async function startWebGLParticles(
       heroX: 0, heroY: 0, heroZ: seedZ * 1.8,
       bioX: 0, bioY: 0, bioZ: 0,
       x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0,
+      trailX: null, trailY: null, trailZ: null,
       openX: 0, openY: 0, openZ: 0,
       size: heroSize,
       alpha: heroAlpha,
@@ -263,7 +264,7 @@ async function startWebGLParticles(
   trailLines.renderOrder = 0;
   scene.add(trailLines);
 
-  const maxConnectionSegments = mobile ? 60 : 180;
+  const maxConnectionSegments = mobile ? 70 : 220;
   const connectionPositions = new Float32Array(maxConnectionSegments * 2 * 3);
   const connectionGeometry = new THREE.BufferGeometry();
   const connectionPositionAttribute = new THREE.BufferAttribute(connectionPositions, 3);
@@ -287,7 +288,7 @@ async function startWebGLParticles(
       return false;
     }
     if (particle.bioType === "front") {
-      return particle.bioTextMotion < 0.06;
+      return particle.bioTextMotion < 0.08;
     }
     return true;
   };
@@ -297,7 +298,7 @@ async function startWebGLParticles(
       return false;
     }
     if (particle.bioType === "front") {
-      return Math.sin(particle.bioFloatPhase * 8.731) > 0.60;
+      return Math.sin(particle.bioFloatPhase * 8.731) > 0.35;
     }
     return particle.bioType === "side" ||
       particle.bioType === "back" ||
@@ -330,6 +331,7 @@ async function startWebGLParticles(
   let bioRebuildTimer = 0;
   let bioDebugLogged = false;
   let bioCountDebugLogged = false;
+  let bioMotionDebugLogged = false;
   const worldHeightAt = (z) => 2 * Math.tan((CAMERA_FOV * Math.PI) / 360) * (CAMERA_Z - z);
   const pixelWorld = (pixels, z = 0) => pixels * worldHeightAt(z) / height;
   const screenToWorld = (screenX, screenY, z) => ({
@@ -973,24 +975,37 @@ async function startWebGLParticles(
     const bioTiltEase = 1 - Math.exp(-3.2 * dt);
     bioYaw += (pointerNormX * Math.PI / 120 - bioYaw) * bioTiltEase;
     bioPitch += (-pointerNormY * Math.PI / 225 - bioPitch) * bioTiltEase;
-    const bioCosY = Math.cos(bioYaw);
-    const bioSinY = Math.sin(bioYaw);
-    const bioCosX = Math.cos(bioPitch);
-    const bioSinX = Math.sin(bioPitch);
     const worldPerPixel = pixelWorld(1);
     const bioTime = timestamp * 0.001;
     const bioTextSettledVisibility = hasTextTargets
       ? smoothstep(clamp((morph - 0.90) / 0.10))
       : 0;
+    const autoBioYaw =
+      Math.sin(bioTime * 0.12) *
+      THREE.MathUtils.degToRad(0.65);
+    const autoBioPitch =
+      Math.sin(bioTime * 0.095 + 1.2) *
+      THREE.MathUtils.degToRad(0.30);
+    const effectiveBioYaw =
+      bioYaw +
+      autoBioYaw * bioTextSettledVisibility;
+    const effectiveBioPitch =
+      bioPitch +
+      autoBioPitch * bioTextSettledVisibility;
+    const bioCosY = Math.cos(effectiveBioYaw);
+    const bioSinY = Math.sin(effectiveBioYaw);
+    const bioCosX = Math.cos(effectiveBioPitch);
+    const bioSinX = Math.sin(effectiveBioPitch);
     const currentPulse =
       0.88 +
-      Math.sin(bioTime * 0.75) *
+      Math.sin(bioTime * 0.60) *
         0.12;
-    trailMaterial.opacity = 0.055 * bioTextSettledVisibility;
+    trailMaterial.opacity = 0.10 * bioTextSettledVisibility;
     connectionMaterial.opacity =
-      0.065 *
+      0.13 *
       bioTextSettledVisibility *
       currentPulse;
+    const motionDebugSamples = [];
     particles.forEach((particle, index) => {
       const settings = BIO_STYLES[particle.bioType];
       const local = particle.hasBioTarget
@@ -1172,49 +1187,54 @@ async function startWebGLParticles(
         Math.sin(bioTime * 0.13 + particle.bioPhase * 1.37) * settings.zMotion * 0.28
       ) * settled;
       const textDepthAmplitude = particle.bioType === "front"
-        ? (particle.bioTextMotion < 0.18 ? 0.028 : 0.008)
-        : particle.bioType === "side" ? 0.065
-          : particle.bioType === "back" ? 0.115
-            : particle.bioType === "volume" ? 0.090 : 0;
-      const textDepthBreath =
+        ? (particle.bioTextMotion < 0.20 ? 0.14 : 0.018)
+        : particle.bioType === "side" ? 0.24
+          : particle.bioType === "back" ? 0.46
+            : particle.bioType === "volume" ? 0.34 : 0;
+      const textDepthBreath = particle.bioType === "atmosphere"
+        ? 0
+        :
         Math.sin(
-          bioTime * 0.34 * particle.bioFloatSpeed +
+          bioTime * 0.24 * particle.bioFloatSpeed +
           particle.bioFloatPhase
         ) *
         textDepthAmplitude *
         settled;
-      const textDepthDrift =
+      const textDepthDrift = particle.bioType === "atmosphere"
+        ? 0
+        :
         Math.sin(
-          bioTime * 0.11 +
+          bioTime * 0.075 +
           particle.bioFloatPhase * 0.73
         ) *
         textDepthAmplitude *
-        0.45 *
+        0.38 *
         settled;
       const animatedDepthOffset =
-        particle.bioType === "atmosphere"
-          ? 0
-          : (textDepthBreath + textDepthDrift) *
-            particle.bioDepthDirection;
-      const xyAmplitude = particle.bioType === "front"
-        ? (particle.bioTextMotion < 0.18 ? worldPerPixel * 0.55 : worldPerPixel * 0.12)
-        : particle.bioType === "side" ? worldPerPixel * 0.75
-          : particle.bioType === "back" ? worldPerPixel * 1.15
-            : particle.bioType === "volume" ? worldPerPixel * 0.90 : 0;
+        (textDepthBreath + textDepthDrift) *
+        particle.bioDepthDirection;
+      const xyAmplitudePx = particle.bioType === "front"
+        ? (particle.bioTextMotion < 0.20 ? 1.8 : 0.18)
+        : particle.bioType === "side" ? 3.0
+          : particle.bioType === "back" ? 4.8
+            : particle.bioType === "volume" ? 3.8 : 0;
+      const xyAmplitude =
+        worldPerPixel *
+        xyAmplitudePx;
       const textFloatX =
         Math.sin(
-          bioTime * 0.21 * particle.bioFloatSpeed +
+          bioTime * 0.19 * particle.bioFloatSpeed +
           particle.bioFloatPhase
         ) *
         xyAmplitude *
         settled;
       const textFloatY =
         Math.cos(
-          bioTime * 0.17 * particle.bioFloatSpeed +
+          bioTime * 0.15 * particle.bioFloatSpeed +
           particle.bioFloatPhase * 0.81
         ) *
         xyAmplitude *
-        0.65 *
+        0.62 *
         settled;
       const depthDisplayScale = particle.bioType === "front" ? 1.00
         : particle.bioType === "side" ? 1.35
@@ -1273,10 +1293,58 @@ async function startWebGLParticles(
       particle.x += particle.vx * delta;
       particle.y += particle.vy * delta;
       particle.z += particle.vz * delta;
+      if (
+        particle.trailX === null ||
+        particle.trailY === null ||
+        particle.trailZ === null ||
+        bioTextSettledVisibility < 0.05
+      ) {
+        particle.trailX = particle.x;
+        particle.trailY = particle.y;
+        particle.trailZ = particle.z;
+      } else {
+        const trailFollowEase =
+          1 -
+          Math.exp(-2.2 * dt);
+        particle.trailX +=
+          (particle.x - particle.trailX) *
+          trailFollowEase;
+        particle.trailY +=
+          (particle.y - particle.trailY) *
+          trailFollowEase;
+        particle.trailZ +=
+          (particle.z - particle.trailZ) *
+          trailFollowEase;
+      }
       const offset = index * 3;
       positions[offset] = particle.x;
       positions[offset + 1] = particle.y;
       positions[offset + 2] = particle.z;
+      if (
+        !bioMotionDebugLogged &&
+        bioTextSettledVisibility > 0.95 &&
+        motionDebugSamples.length < 4
+      ) {
+        const wantsFront =
+          particle.bioType === "front" &&
+          particle.bioTextMotion < 0.20 &&
+          !motionDebugSamples.some((sample) => sample.bioType === "front");
+        const wantsSupport =
+          (particle.bioType === "side" ||
+            particle.bioType === "back" ||
+            particle.bioType === "volume") &&
+          !motionDebugSamples.some((sample) => sample.bioType === particle.bioType);
+        if (wantsFront || wantsSupport) {
+          motionDebugSamples.push({
+            bioType: particle.bioType,
+            textDepthAmplitude,
+            xyAmplitudePx,
+            animatedDepthOffset,
+            textFloatX,
+            textFloatY
+          });
+        }
+      }
       /*
        * Positive Z = closer to camera.
        */
@@ -1298,6 +1366,14 @@ async function startWebGLParticles(
         : particle.bioType === "side" ? lerp(0.94, 1.08, particleBioDepth01)
           : particle.bioType === "back" ? lerp(0.86, 1.12, particleBioDepth01)
             : particle.bioType === "volume" ? lerp(0.90, 1.10, particleBioDepth01) : 1;
+      const dynamicZOffset =
+        animatedDepthOffset;
+      const dynamicDepthSize = particle.bioType === "front" ? 1
+        : clamp(
+          1 + dynamicZOffset * 0.20,
+          0.90,
+          1.12
+        );
 
       const baseBioSize = particle.bioBaseSize * (mobile ? 0.76 : 1);
 
@@ -1306,7 +1382,8 @@ async function startWebGLParticles(
           particle.size,
           baseBioSize *
             appliedDepthSizeScale *
-            animatedDepthSizeMultiplier,
+            animatedDepthSizeMultiplier *
+            dynamicDepthSize,
           local
         );
 
@@ -1317,6 +1394,12 @@ async function startWebGLParticles(
         particle.bioType === "atmosphere"
         ? 1
         : lerp(0.86, 1.12, particleBioDepth01);
+      const dynamicDepthAlpha = particle.bioType === "front" ? 1
+        : clamp(
+          1 + animatedDepthOffset * 0.16,
+          0.90,
+          1.10
+        );
       let interactionAlphaBoost = 1;
 
       if (particle.bioType === "side") {
@@ -1333,6 +1416,7 @@ async function startWebGLParticles(
           particle.bioBaseAlpha *
             appliedDepthAlphaScale *
             supportDepthAlphaScale *
+            dynamicDepthAlpha *
             interactionAlphaBoost
         );
 
@@ -1356,24 +1440,52 @@ async function startWebGLParticles(
         if (!trailEligible(particle)) {
           continue;
         }
-        const velocityMagnitude = Math.sqrt(
-          particle.vx * particle.vx +
-          particle.vy * particle.vy +
-          particle.vz * particle.vz
-        );
-        if (velocityMagnitude < 0.0005) {
-          continue;
-        }
-        const trailScale = particle.bioType === "back" ? 13
-          : particle.bioType === "volume" ? 11
-            : particle.bioType === "side" ? 9 : 6;
-        const offset = trailSegmentCount * 6;
-        trailPositions[offset] = particle.x;
-        trailPositions[offset + 1] = particle.y;
-        trailPositions[offset + 2] = particle.z;
-        trailPositions[offset + 3] = particle.x - particle.vx * trailScale;
-        trailPositions[offset + 4] = particle.y - particle.vy * trailScale;
-        trailPositions[offset + 5] = particle.z - particle.vz * trailScale;
+        const trailDx =
+          particle.x -
+          particle.trailX;
+        const trailDy =
+          particle.y -
+          particle.trailY;
+        const trailDz =
+          particle.z -
+          particle.trailZ;
+        const trailLength =
+          Math.sqrt(
+            trailDx * trailDx +
+            trailDy * trailDy +
+            trailDz * trailDz
+          );
+        const maxTrailLength =
+          worldPerPixel *
+          (mobile ? 7 : 10);
+        const trailClamp =
+          trailLength > maxTrailLength && trailLength > 0
+            ? maxTrailLength / trailLength
+            : 1;
+        const tailX =
+          particle.x -
+          trailDx * trailClamp;
+        const tailY =
+          particle.y -
+          trailDy * trailClamp;
+        const tailZ =
+          particle.z -
+          trailDz * trailClamp;
+        const offset =
+          trailSegmentCount *
+          6;
+        trailPositions[offset] =
+          particle.x;
+        trailPositions[offset + 1] =
+          particle.y;
+        trailPositions[offset + 2] =
+          particle.z;
+        trailPositions[offset + 3] =
+          tailX;
+        trailPositions[offset + 4] =
+          tailY;
+        trailPositions[offset + 5] =
+          tailZ;
         trailSegmentCount += 1;
       }
     }
@@ -1382,7 +1494,7 @@ async function startWebGLParticles(
 
     let connectionSegmentCount = 0;
     if (bioTextSettledVisibility >= 0.05) {
-      const connectionDistance = worldPerPixel * (mobile ? 22 : 26);
+      const connectionDistance = worldPerPixel * (mobile ? 20 : 24);
       const connectionDistanceSquared = connectionDistance * connectionDistance;
       const cellSize = connectionDistance;
       const connectionGrid = new Map();
@@ -1466,6 +1578,17 @@ async function startWebGLParticles(
     }
     connectionGeometry.setDrawRange(0, connectionSegmentCount * 2);
     connectionPositionAttribute.needsUpdate = true;
+    if (
+      !bioMotionDebugLogged &&
+      bioTextSettledVisibility > 0.95
+    ) {
+      console.table(motionDebugSamples);
+      console.table({
+        trailSegmentCount,
+        connectionSegmentCount
+      });
+      bioMotionDebugLogged = true;
+    }
     renderer.render(scene, camera);
     frame = requestAnimationFrame(draw);
   }
@@ -1477,6 +1600,9 @@ async function startWebGLParticles(
     particle.x = particle.heroX;
     particle.y = particle.heroY;
     particle.z = particle.heroZ;
+    particle.trailX = particle.x;
+    particle.trailY = particle.y;
+    particle.trailZ = particle.z;
     const offset = index * 3;
     positions[offset] = particle.x;
     positions[offset + 1] = particle.y;
